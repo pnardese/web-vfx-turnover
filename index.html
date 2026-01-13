@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VFX Turnover Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        const VFXTurnoverApp = () => {
+            const [edlData, setEdlData] = useState(null);
+            const [filmId, setFilmId] = useState('EPSV');
+            const [fps, setFps] = useState('24');
+            const [handles, setHandles] = useState(10);
+            const [binData, setBinData] = useState(null);
+            const [status, setStatus] = useState('');
+
+            const parseEDL = (edlText) => {
+                const lines = edlText.split('\n');
+                const edlData = {
+                    edl_metadata: {
+                        edl_title: '',
+                        edl_fcm: ''
+                    },
+                    events: []
+                };
+                
+                let lastEvent = null;
+                let lastScene = 0;
+                let vfxCounter = 0;
+
+                const edlLineRegex = /^(\d+)\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})$/;
+
+                for (let line of lines) {
+                    line = line.trim();
+                    if (!line) continue;
+
+                    if (line.startsWith('TITLE:')) {
+                        edlData.edl_metadata.edl_title = line.replace('TITLE:', '').trim();
+                    } else if (line.startsWith('FCM:')) {
+                        edlData.edl_metadata.edl_fcm = line.replace('FCM:', '').trim();
+                    } else if (edlLineRegex.test(line)) {
+                        const match = line.match(edlLineRegex);
+                        const event = {
+                            type: 'event',
+                            event_number: match[1],
+                            reel: match[2],
+                            track: match[3],
+                            transition: match[4],
+                            source_start_TC: match[5],
+                            source_end_TC: match[6],
+                            record_start_TC: match[7],
+                            record_end_TC: match[8],
+                            FROM: '',
+                            LOC: '',
+                            SOURCE: '',
+                            'VFX ID': ''
+                        };
+                        edlData.events.push(event);
+                        lastEvent = event;
+                    } else if (line.startsWith('*FROM')) {
+                        if (lastEvent) lastEvent.FROM = line.replace('*FROM', '').trim();
+                    } else if (line.startsWith('*LOC:')) {
+                        if (lastEvent) {
+                            lastEvent.LOC = line.replace('*LOC:', '').trim();
+                            const parts = line.split(/\s+/);
+                            lastEvent['VFX ID'] = parts[parts.length - 1];
+                        }
+                    } else if (line.startsWith('*SOURCE')) {
+                        if (lastEvent) {
+                            lastEvent.SOURCE = line.replace('*SOURCE', '').trim();
+                            if (!lastEvent.LOC) {
+                                const sceneMatch = lastEvent.FROM.match(/\d+/);
+                                if (sceneMatch) {
+                                    const sceneClip = sceneMatch[0].padStart(3, '0');
+                                    if (sceneClip === lastScene) {
+                                        vfxCounter += 10;
+                                    } else {
+                                        vfxCounter = 10;
+                                    }
+                                    lastEvent['VFX ID'] = `${filmId}_${sceneClip}_${String(vfxCounter).padStart(3, '0')}`;
+                                    lastScene = sceneClip;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return edlData;
+            };
+
+            const parseTimecode = (tc, framerate) => {
+                const [hours, minutes, seconds, frames] = tc.split(':').map(Number);
+                return hours * 3600 * framerate + minutes * 60 * framerate + seconds * framerate + frames;
+            };
+
+            const framesToTimecode = (totalFrames, framerate) => {
+                const hours = Math.floor(totalFrames / (3600 * framerate));
+                totalFrames %= (3600 * framerate);
+                const minutes = Math.floor(totalFrames / (60 * framerate));
+                totalFrames %= (60 * framerate);
+                const seconds = Math.floor(totalFrames / framerate);
+                const frames = totalFrames % framerate;
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
+            };
+
+            const addTimecode = (tc, framesToAdd, framerate) => {
+                const totalFrames = parseTimecode(tc, framerate) + framesToAdd;
+                return framesToTimecode(totalFrames, framerate);
+            };
+
+            const subtractTimecode = (tc, framesToSubtract, framerate) => {
+                const totalFrames = Math.max(0, parseTimecode(tc, framerate) - framesToSubtract);
+                return framesToTimecode(totalFrames, framerate);
+            };
+
+            const handleEDLUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const text = event.target.result;
+                        const parsed = parseEDL(text);
+                        setEdlData(parsed);
+                        setStatus(`EDL loaded: ${parsed.events.length} events found`);
+                    };
+                    reader.readAsText(file);
+                }
+            };
+
+            const handleBinUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const text = event.target.result;
+                        const lines = text.split('\n');
+                        const headers = lines[0].split('\t');
+                        const nameIndex = headers.indexOf('Name');
+                        const data = lines.slice(1).filter(line => line.trim()).map(line => {
+                            const values = line.split('\t');
+                            return { Name: values[nameIndex] || '' };
+                        });
+                        setBinData(data);
+                        setStatus(`Bin file loaded: ${data.length} entries found`);
+                    };
+                    reader.readAsText(file);
+                }
+            };
+
+            const downloadFile = (content, filename) => {
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                setStatus(`Downloaded: ${filename}`);
+            };
+
+            const exportMarkers = () => {
+                if (!edlData) return;
+                const user = 'vfx';
+                const trackNumber = 'V1';
+                const markerColor = 'green';
+                let content = '';
+                
+                edlData.events.forEach(event => {
+                    content += `${user}\t${event.record_start_TC}\t${trackNumber}\t${markerColor}\t${event['VFX ID']}\t1\n`;
+                });
+                
+                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_markers.txt`);
+            };
+
+            const exportSubcaps = () => {
+                if (!edlData) return;
+                let content = '<begin subtitles>\n';
+                
+                edlData.events.forEach(event => {
+                    content += `${event.record_start_TC} ${event.record_end_TC}\n`;
+                    content += `${event['VFX ID']}\n\n`;
+                });
+                
+                content += '<end subtitles>\n';
+                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_subcaps.txt`);
+            };
+
+            const exportALEPulls = () => {
+                if (!edlData) return;
+                const framerate = parseInt(fps);
+                const heading = `Heading
+FIELD_DELIM\tTABS
+VIDEO_FORMAT\t1080
+AUDIO_FORMAT\t48khz
+FPS\t${fps}
+
+Column
+Name\tTracks\tStart\tEnd\tTape
+Data
+
+`;
+                
+                let content = heading;
+                edlData.events.forEach(event => {
+                    const newStart = subtractTimecode(event.source_start_TC, handles, framerate);
+                    const newEnd = addTimecode(event.source_end_TC, handles, framerate);
+                    content += `${event['VFX ID']}\tV\t${newStart}\t${newEnd}\t${event.reel}\n`;
+                });
+                
+                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}.ALE`);
+            };
+
+            const exportPullsEDL = () => {
+                if (!edlData) return;
+                let content = `TITLE: ${edlData.edl_metadata.edl_title || 'output'}_pulls\nFCM: NON-DROP FRAME\n`;
+                
+                edlData.events.forEach(event => {
+                    content += `${event.event_number} ${event['VFX ID']} ${event.track} ${event.transition} ${event.source_start_TC} ${event.source_end_TC} ${event.record_start_TC} ${event.record_end_TC}\n`;
+                });
+                
+                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_pulls.edl`);
+            };
+
+            const exportDummyEDL = () => {
+                if (!edlData) return;
+                let content = `TITLE: ${edlData.edl_metadata.edl_title || 'output'}_dummy\nFCM: NON-DROP FRAME\n`;
+                
+                edlData.events.forEach(event => {
+                    content += `${event.event_number} ${event['VFX ID']} ${event.track} ${event.transition} ${event.source_start_TC} ${event.source_end_TC} ${event.record_start_TC} ${event.record_end_TC}\n`;
+                });
+                
+                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_dummy.edl`);
+            };
+
+            const exportGoogleTab = () => {
+                if (!edlData) return;
+                const framerate = parseInt(fps);
+                let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tTape\n';
+                
+                edlData.events.forEach((event, index) => {
+                    const startFrames = parseTimecode(event.source_start_TC, framerate);
+                    const endFrames = parseTimecode(event.source_end_TC, framerate);
+                    const durationFrames = endFrames - startFrames;
+                    const duration = framesToTimecode(durationFrames, framerate);
+                    
+                    content += `${index + 1}\t${event['VFX ID']}\t\t\t\t\t${duration}\t${event.source_start_TC}\t${event.source_end_TC}\t${durationFrames}\t${event.reel}\n`;
+                });
+                
+                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_TAB.txt`);
+            };
+
+            const exportFinalVFXEDL = () => {
+                if (!edlData || !binData) {
+                    setStatus('Please upload both EDL and Bin files');
+                    return;
+                }
+                
+                let content = `TITLE: ${edlData.edl_metadata.edl_title || 'output'}_vfx_final\nFCM: NON-DROP FRAME\n`;
+                
+                binData.forEach(binEntry => {
+                    edlData.events.forEach(event => {
+                        if (binEntry.Name.includes(event['VFX ID'])) {
+                            content += `${event.event_number} ${binEntry.Name} ${event.track} ${event.transition} ${event.source_start_TC} ${event.source_end_TC} ${event.record_start_TC} ${event.record_end_TC}\n`;
+                        }
+                    });
+                });
+                
+                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_vfx_final.edl`);
+            };
+
+            // SVG Icons as components
+            const UploadIcon = () => (
+                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+            );
+
+            const TableIcon = () => (
+                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+            );
+
+            const FilmIcon = () => (
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                </svg>
+            );
+
+            const SmallIcon = ({ type }) => (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {type === 'tag' && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />}
+                    {type === 'file' && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />}
+                    {type === 'download' && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />}
+                    {type === 'table' && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />}
+                    {type === 'film' && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />}
+                </svg>
+            );
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
+                    <div className="max-w-6xl mx-auto">
+                        <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="text-purple-400">
+                                    <FilmIcon />
+                                </div>
+                                <h1 className="text-4xl font-bold text-white">VFX Turnover Tool</h1>
+                            </div>
+
+                            {/* Settings */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                                <div>
+                                    <label className="block text-sm font-medium text-purple-200 mb-2">Film ID</label>
+                                    <input
+                                        type="text"
+                                        value={filmId}
+                                        onChange={(e) => setFilmId(e.target.value)}
+                                        className="w-full px-4 py-2 bg-white/10 border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-purple-200 mb-2">FPS</label>
+                                    <input
+                                        type="text"
+                                        value={fps}
+                                        onChange={(e) => setFps(e.target.value)}
+                                        className="w-full px-4 py-2 bg-white/10 border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-purple-200 mb-2">Handles (frames)</label>
+                                    <input
+                                        type="number"
+                                        value={handles}
+                                        onChange={(e) => setHandles(parseInt(e.target.value))}
+                                        className="w-full px-4 py-2 bg-white/10 border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* File Upload */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                                <div className="bg-white/5 rounded-xl p-6 border border-white/20">
+                                    <label className="flex flex-col items-center gap-3 cursor-pointer group">
+                                        <div className="text-purple-400 group-hover:text-purple-300 transition-colors">
+                                            <UploadIcon />
+                                        </div>
+                                        <span className="text-white font-medium">Upload EDL File</span>
+                                        <input
+                                            type="file"
+                                            accept=".edl,.txt"
+                                            onChange={handleEDLUpload}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                    {edlData && (
+                                        <div className="mt-4 text-center text-green-400 text-sm">
+                                            ✓ {edlData.events.length} events loaded
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="bg-white/5 rounded-xl p-6 border border-white/20">
+                                    <label className="flex flex-col items-center gap-3 cursor-pointer group">
+                                        <div className="text-purple-400 group-hover:text-purple-300 transition-colors">
+                                            <TableIcon />
+                                        </div>
+                                        <span className="text-white font-medium">Upload Bin File (TAB)</span>
+                                        <span className="text-white/60 text-xs">(For Final VFX EDL)</span>
+                                        <input
+                                            type="file"
+                                            accept=".txt,.tab"
+                                            onChange={handleBinUpload}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                    {binData && (
+                                        <div className="mt-4 text-center text-green-400 text-sm">
+                                            ✓ {binData.length} entries loaded
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Export Buttons */}
+                            <div className="mb-6">
+                                <h2 className="text-2xl font-semibold text-white mb-4">Export Options</h2>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <button
+                                        onClick={exportMarkers}
+                                        disabled={!edlData}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                                    >
+                                        <SmallIcon type="tag" />
+                                        Markers
+                                    </button>
+                                    <button
+                                        onClick={exportSubcaps}
+                                        disabled={!edlData}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                                    >
+                                        <SmallIcon type="file" />
+                                        Subcaps
+                                    </button>
+                                    <button
+                                        onClick={exportALEPulls}
+                                        disabled={!edlData}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                                    >
+                                        <SmallIcon type="download" />
+                                        ALE Pulls
+                                    </button>
+                                    <button
+                                        onClick={exportPullsEDL}
+                                        disabled={!edlData}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                                    >
+                                        <SmallIcon type="file" />
+                                        Pulls EDL
+                                    </button>
+                                    <button
+                                        onClick={exportDummyEDL}
+                                        disabled={!edlData}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                                    >
+                                        <SmallIcon type="file" />
+                                        Dummy EDL
+                                    </button>
+                                    <button
+                                        onClick={exportGoogleTab}
+                                        disabled={!edlData}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                                    >
+                                        <SmallIcon type="table" />
+                                        Google Tab
+                                    </button>
+                                    <button
+                                        onClick={exportFinalVFXEDL}
+                                        disabled={!edlData || !binData}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors col-span-2"
+                                    >
+                                        <SmallIcon type="film" />
+                                        Final VFX EDL
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Status */}
+                            {status && (
+                                <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-4 text-green-200 mb-6">
+                                    {status}
+                                </div>
+                            )}
+
+                            {/* Preview */}
+                            {edlData && (
+                                <div className="mt-8 bg-white/5 rounded-xl p-6 border border-white/20">
+                                    <h3 className="text-xl font-semibold text-white mb-4">EDL Preview</h3>
+                                    <div className="text-purple-200 space-y-2 mb-4">
+                                        <p><span className="font-medium">Title:</span> {edlData.edl_metadata.edl_title}</p>
+                                        <p><span className="font-medium">FCM:</span> {edlData.edl_metadata.edl_fcm}</p>
+                                        <p><span className="font-medium">Events:</span> {edlData.events.length}</p>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="text-xs uppercase bg-white/10 text-purple-200">
+                                                <tr>
+                                                    <th className="px-4 py-2">#</th>
+                                                    <th className="px-4 py-2">VFX ID</th>
+                                                    <th className="px-4 py-2">Reel</th>
+                                                    <th className="px-4 py-2">Source In</th>
+                                                    <th className="px-4 py-2">Source Out</th>
+                                                    <th className="px-4 py-2">Record In</th>
+                                                    <th className="px-4 py-2">Record Out</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="text-white/80">
+                                                {edlData.events.slice(0, 10).map((event, idx) => (
+                                                    <tr key={idx} className="border-b border-white/10">
+                                                        <td className="px-4 py-2">{event.event_number}</td>
+                                                        <td className="px-4 py-2 font-mono text-xs">{event['VFX ID']}</td>
+                                                        <td className="px-4 py-2">{event.reel}</td>
+                                                        <td className="px-4 py-2 font-mono text-xs">{event.source_start_TC}</td>
+                                                        <td className="px-4 py-2 font-mono text-xs">{event.source_end_TC}</td>
+                                                        <td className="px-4 py-2 font-mono text-xs">{event.record_start_TC}</td>
+                                                        <td className="px-4 py-2 font-mono text-xs">{event.record_end_TC}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {edlData.events.length > 10 && (
+                                            <p className="text-white/60 text-sm mt-2 text-center">
+                                                Showing 10 of {edlData.events.length} events
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<VFXTurnoverApp />, document.getElementById('root'));
+    </script>
+</body>
+</html
