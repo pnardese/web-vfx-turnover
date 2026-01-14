@@ -135,8 +135,15 @@
                 reader.onload = (event) => {
                     const text = event.target.result;
                     const parsed = parseEDL(text);
+                    // Always store the original uploaded filename (without extension)
+                    const filenameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+                    parsed.edl_metadata.edl_filename = filenameWithoutExt;
+                    // If TITLE is empty, use the filename
+                    if (!parsed.edl_metadata.edl_title || parsed.edl_metadata.edl_title.trim() === '') {
+                        parsed.edl_metadata.edl_title = filenameWithoutExt;
+                    }
                     setEdlData(parsed);
-                    setStatus(`EDL loaded: ${parsed.events.length} events found`);
+                    setStatus(`EDL loaded: ${parsed.events.length} events found (filename: ${filenameWithoutExt})`);
                 };
                 reader.readAsText(file);
             };
@@ -246,7 +253,8 @@
                     content += `${user}\t${event.record_start_TC}\t${trackNumber}\t${markerColor}\t${event['VFX ID']}\t1\n`;
                 });
                 
-                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_markers.txt`);
+                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
+                downloadFile(content, `${baseFilename}_markers.txt`);
             };
 
             const exportSubcaps = () => {
@@ -259,7 +267,8 @@
                 });
                 
                 content += '<end subtitles>\n';
-                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_subcaps.txt`);
+                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
+                downloadFile(content, `${baseFilename}_subcaps.txt`);
             };
 
             const exportALEPulls = () => {
@@ -284,29 +293,32 @@ Data
                     content += `${event['VFX ID']}\tV\t${newStart}\t${newEnd}\t${event.reel}\n`;
                 });
                 
-                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}.ALE`);
+                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
+                downloadFile(content, `${baseFilename}.ALE`);
             };
 
             const exportPullsEDL = () => {
                 if (!edlData) return;
-                let content = `TITLE: ${edlData.edl_metadata.edl_title || 'output'}_pulls\nFCM: NON-DROP FRAME\n`;
+                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
+                let content = `TITLE: ${baseFilename}_pulls\nFCM: NON-DROP FRAME\n`;
                 
                 edlData.events.forEach(event => {
                     content += `${event.event_number} ${event['VFX ID']} ${event.track} ${event.transition} ${event.source_start_TC} ${event.source_end_TC} ${event.record_start_TC} ${event.record_end_TC}\n`;
                 });
                 
-                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_pulls.edl`);
+                downloadFile(content, `${baseFilename}_pulls.edl`);
             };
 
             const exportDummyEDL = () => {
                 if (!edlData) return;
-                let content = `TITLE: ${edlData.edl_metadata.edl_title || 'output'}_dummy\nFCM: NON-DROP FRAME\n`;
+                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
+                let content = `TITLE: ${baseFilename}_dummy\nFCM: NON-DROP FRAME\n`;
                 
                 edlData.events.forEach(event => {
                     content += `${event.event_number} ${event['VFX ID']} ${event.track} ${event.transition} ${event.source_start_TC} ${event.source_end_TC} ${event.record_start_TC} ${event.record_end_TC}\n`;
                 });
                 
-                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_dummy.edl`);
+                downloadFile(content, `${baseFilename}_dummy.edl`);
             };
 
             const exportGoogleTab = () => {
@@ -323,7 +335,8 @@ Data
                     content += `${index + 1}\t${event['VFX ID']}\t\t\t\t\t${duration}\t${event.source_start_TC}\t${event.source_end_TC}\t${durationFrames}\t${event.reel}\n`;
                 });
                 
-                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_TAB.txt`);
+                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
+                downloadFile(content, `${baseFilename}_TAB.txt`);
             };
 
             const exportFinalVFXEDL = () => {
@@ -332,7 +345,8 @@ Data
                     return;
                 }
                 
-                let content = `TITLE: ${edlData.edl_metadata.edl_title || 'output'}_vfx_final\nFCM: NON-DROP FRAME\n`;
+                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
+                let content = `TITLE: ${baseFilename}_vfx_final\nFCM: NON-DROP FRAME\n`;
                 
                 binData.forEach(binEntry => {
                     edlData.events.forEach(event => {
@@ -342,7 +356,7 @@ Data
                     });
                 });
                 
-                downloadFile(content, `${edlData.edl_metadata.edl_title || 'output'}_vfx_final.edl`);
+                downloadFile(content, `${baseFilename}_vfx_final.edl`);
             };
 
             const Icon = ({ path }) => (
@@ -438,13 +452,14 @@ Data
                                 <div className="bg-gray-50 border border-gray-200 rounded p-4 mb-6">
                                     <h3 className="text-xs font-medium text-gray-500 mb-3 uppercase">Preview</h3>
                                     <div className="text-sm text-gray-700 space-y-1 mb-4">
+                                        <p><span className="font-medium">Filename:</span> {edlData.edl_metadata.edl_filename}</p>
                                         <p><span className="font-medium">Title:</span> {edlData.edl_metadata.edl_title}</p>
                                         <p><span className="font-medium">FCM:</span> {edlData.edl_metadata.edl_fcm}</p>
                                         <p><span className="font-medium">Events:</span> {edlData.events.length}</p>
                                     </div>
-                                    <div className="overflow-x-auto">
+                                    <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-200 rounded">
                                         <table className="w-full text-xs">
-                                            <thead className="bg-gray-100 text-gray-600 uppercase">
+                                            <thead className="bg-gray-100 text-gray-600 uppercase sticky top-0">
                                                 <tr>
                                                     <th className="px-3 py-2 text-left">#</th>
                                                     <th className="px-3 py-2 text-left">VFX ID</th>
@@ -456,7 +471,7 @@ Data
                                                 </tr>
                                             </thead>
                                             <tbody className="text-gray-700">
-                                                {edlData.events.slice(0, 10).map((event, idx) => (
+                                                {edlData.events.map((event, idx) => (
                                                     <tr key={idx} className="border-b border-gray-200">
                                                         <td className="px-3 py-2">{event.event_number}</td>
                                                         <td className="px-3 py-2 font-mono">{event['VFX ID']}</td>
@@ -469,7 +484,6 @@ Data
                                                 ))}
                                             </tbody>
                                         </table>
-                                        {edlData.events.length > 10 && <p className="text-gray-500 text-xs mt-2 text-center">Showing 10 of {edlData.events.length} events</p>}
                                     </div>
                                 </div>
                             )}

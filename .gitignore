@@ -1,0 +1,18 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+
+# IDE files
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Logs
+*.log
+
+# Miscellaneous
+.DS_Store
+*.swp
