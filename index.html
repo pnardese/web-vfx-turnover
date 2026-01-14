@@ -49,9 +49,9 @@
                     if (!line) continue;
 
                     if (line.startsWith('TITLE:')) {
-                        edlData.edl_metadata.edl_title = line.replace('TITLE:', '').trim();
+                        edlData.edl_metadata.edl_title = line.substring(6).trim();
                     } else if (line.startsWith('FCM:')) {
-                        edlData.edl_metadata.edl_fcm = line.replace('FCM:', '').trim();
+                        edlData.edl_metadata.edl_fcm = line.substring(4).trim();
                     } else if (edlLineRegex.test(line)) {
                         const match = line.match(edlLineRegex);
                         const event = {
@@ -72,16 +72,16 @@
                         edlData.events.push(event);
                         lastEvent = event;
                     } else if (line.startsWith('*FROM')) {
-                        if (lastEvent) lastEvent.FROM = line.replace('*FROM', '').trim();
+                        if (lastEvent) lastEvent.FROM = line.substring(5).trim();
                     } else if (line.startsWith('*LOC:')) {
                         if (lastEvent) {
-                            lastEvent.LOC = line.replace('*LOC:', '').trim();
+                            lastEvent.LOC = line.substring(5).trim();
                             const parts = line.split(/\s+/);
                             lastEvent['VFX ID'] = parts[parts.length - 1];
                         }
                     } else if (line.startsWith('*SOURCE')) {
                         if (lastEvent) {
-                            lastEvent.SOURCE = line.replace('*SOURCE', '').trim();
+                            lastEvent.SOURCE = line.substring(7).trim();
                             if (!lastEvent.LOC) {
                                 const sceneMatch = lastEvent.FROM.match(/\d+/);
                                 if (sceneMatch) {
