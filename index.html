@@ -131,6 +131,15 @@
             };
 
             const processEDLFile = (file) => {
+                // Check if file has .edl or .txt extension
+                const validExtensions = ['.edl', '.txt'];
+                const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                
+                if (!validExtensions.includes(fileExtension)) {
+                    setStatus(`Error: Invalid file type. Please upload an EDL file (.edl or .txt)`);
+                    return;
+                }
+                
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const text = event.target.result;
@@ -149,6 +158,15 @@
             };
 
             const processBinFile = (file) => {
+                // Check if file has .txt or .tab extension
+                const validExtensions = ['.txt', '.tab'];
+                const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                
+                if (!validExtensions.includes(fileExtension)) {
+                    setStatus(`Error: Invalid file type. Please upload a Bin file (.txt or .tab)`);
+                    return;
+                }
+                
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const text = event.target.result;
@@ -445,16 +463,22 @@ Data
                             </div>
 
                             {/* Status */}
-                            {status && <div className="bg-gray-100 border border-gray-300 rounded p-3 text-sm text-gray-700 mb-6">{status}</div>}
+                            {status && (
+                                <div className={`border rounded p-3 text-sm mb-6 ${
+                                    status.startsWith('Error') 
+                                        ? 'bg-red-50 border-red-300 text-red-700' 
+                                        : 'bg-gray-100 border-gray-300 text-gray-700'
+                                }`}>
+                                    {status}
+                                </div>
+                            )}
 
                             {/* Preview */}
                             {edlData && (
                                 <div className="bg-gray-50 border border-gray-200 rounded p-4 mb-6">
                                     <h3 className="text-xs font-medium text-gray-500 mb-3 uppercase">Preview</h3>
                                     <div className="text-sm text-gray-700 space-y-1 mb-4">
-                                        <p><span className="font-medium">Filename:</span> {edlData.edl_metadata.edl_filename}</p>
-                                        <p><span className="font-medium">Title:</span> {edlData.edl_metadata.edl_title}</p>
-                                        <p><span className="font-medium">FCM:</span> {edlData.edl_metadata.edl_fcm}</p>
+                                        <p><span className="font-medium">Filename:</span> {edlData.edl_metadata.edl_filename}.edl</p>
                                         <p><span className="font-medium">Events:</span> {edlData.events.length}</p>
                                     </div>
                                     <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-200 rounded">
@@ -474,7 +498,9 @@ Data
                                                 {edlData.events.map((event, idx) => (
                                                     <tr key={idx} className="border-b border-gray-200">
                                                         <td className="px-3 py-2">{event.event_number}</td>
-                                                        <td className="px-3 py-2 font-mono">{event['VFX ID']}</td>
+                                                        <td className={`px-3 py-2 font-mono ${event.LOC ? 'text-green-600 font-semibold' : ''}`}>
+                                                            {event['VFX ID']}
+                                                        </td>
                                                         <td className="px-3 py-2">{event.reel}</td>
                                                         <td className="px-3 py-2 font-mono">{event.source_start_TC}</td>
                                                         <td className="px-3 py-2 font-mono">{event.source_end_TC}</td>
