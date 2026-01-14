@@ -8,21 +8,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-        }
-    </style>
 </head>
 <body>
     <div id="root"></div>
-
     <script type="text/babel">
         const { useState } = React;
 
         const VFXTurnoverApp = () => {
+            const [currentPage, setCurrentPage] = useState('main');
             const [edlData, setEdlData] = useState(null);
             const [filmId, setFilmId] = useState('FILM_ID');
             const [fps, setFps] = useState('24');
@@ -34,70 +27,33 @@
 
             const parseEDL = (edlText) => {
                 const lines = edlText.split('\n');
-                const edlData = {
-                    edl_metadata: { edl_title: '', edl_fcm: '' },
-                    events: []
-                };
-                
-                let lastEvent = null;
-                let lastScene = 0;
-                let vfxCounter = 0;
+                const edlData = { edl_metadata: { edl_title: '', edl_fcm: '' }, events: [] };
+                let lastEvent = null, lastScene = 0, vfxCounter = 0;
                 const edlLineRegex = /^(\d+)\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})$/;
 
                 for (let line of lines) {
                     line = line.trim();
                     if (!line) continue;
-
-                    if (line.startsWith('TITLE:')) {
-                        // Extract everything after "TITLE: " to preserve full title with spaces and underscores
-                        edlData.edl_metadata.edl_title = line.substring(6).trim();
-                    } else if (line.startsWith('FCM:')) {
-                        edlData.edl_metadata.edl_fcm = line.substring(4).trim();
-                    } else if (edlLineRegex.test(line)) {
-                        const match = line.match(edlLineRegex);
-                        const event = {
-                            type: 'event',
-                            event_number: match[1],
-                            reel: match[2],
-                            track: match[3],
-                            transition: match[4],
-                            source_start_TC: match[5],
-                            source_end_TC: match[6],
-                            record_start_TC: match[7],
-                            record_end_TC: match[8],
-                            FROM: '',
-                            LOC: '',
-                            SOURCE: '',
-                            'VFX ID': ''
-                        };
-                        edlData.events.push(event);
-                        lastEvent = event;
-                    } else if (line.startsWith('*FROM')) {
-                        if (lastEvent) lastEvent.FROM = line.substring(5).trim();
-                    } else if (line.startsWith('*LOC:')) {
-                        if (lastEvent) {
-                            const locContent = line.substring(5).trim();
-                            lastEvent.LOC = locContent;
-                            // Extract VFX ID from LOC (last whitespace-separated token)
-                            const parts = locContent.split(/\s+/);
-                            lastEvent['VFX ID'] = parts[parts.length - 1];
-                        }
-                    } else if (line.startsWith('*SOURCE')) {
-                        if (lastEvent) {
-                            lastEvent.SOURCE = line.substring(7).trim();
-                            // Only generate VFX ID if not already set from LOC
-                            if (!lastEvent.LOC && !lastEvent['VFX ID']) {
-                                const sceneMatch = lastEvent.FROM.match(/\d+/);
-                                if (sceneMatch) {
-                                    const sceneClip = sceneMatch[0].padStart(3, '0');
-                                    if (sceneClip === lastScene) {
-                                        vfxCounter += 10;
-                                    } else {
-                                        vfxCounter = 10;
-                                    }
-                                    lastEvent['VFX ID'] = `${filmId}_${sceneClip}_${String(vfxCounter).padStart(3, '0')}`;
-                                    lastScene = sceneClip;
-                                }
+                    if (line.startsWith('TITLE:')) edlData.edl_metadata.edl_title = line.substring(6).trim();
+                    else if (line.startsWith('FCM:')) edlData.edl_metadata.edl_fcm = line.substring(4).trim();
+                    else if (edlLineRegex.test(line)) {
+                        const m = line.match(edlLineRegex);
+                        lastEvent = { type: 'event', event_number: m[1], reel: m[2], track: m[3], transition: m[4], source_start_TC: m[5], source_end_TC: m[6], record_start_TC: m[7], record_end_TC: m[8], FROM: '', LOC: '', SOURCE: '', 'VFX ID': '' };
+                        edlData.events.push(lastEvent);
+                    } else if (line.startsWith('*FROM') && lastEvent) lastEvent.FROM = line.substring(5).trim();
+                    else if (line.startsWith('*LOC:') && lastEvent) {
+                        const loc = line.substring(5).trim();
+                        lastEvent.LOC = loc;
+                        lastEvent['VFX ID'] = loc.split(/\s+/).pop();
+                    } else if (line.startsWith('*SOURCE') && lastEvent) {
+                        lastEvent.SOURCE = line.substring(7).trim();
+                        if (!lastEvent.LOC && !lastEvent['VFX ID']) {
+                            const match = lastEvent.FROM.match(/\d+/);
+                            if (match) {
+                                const scene = match[0].padStart(3, '0');
+                                vfxCounter = (scene === lastScene) ? vfxCounter + 10 : 10;
+                                lastEvent['VFX ID'] = `${filmId}_${scene}_${String(vfxCounter).padStart(3, '0')}`;
+                                lastScene = scene;
                             }
                         }
                     }
@@ -105,449 +61,266 @@
                 return edlData;
             };
 
-            const parseTimecode = (tc, framerate) => {
-                const [hours, minutes, seconds, frames] = tc.split(':').map(Number);
-                return hours * 3600 * framerate + minutes * 60 * framerate + seconds * framerate + frames;
+            const parseTimecode = (tc, fr) => { const [h,m,s,f] = tc.split(':').map(Number); return h*3600*fr + m*60*fr + s*fr + f; };
+            const framesToTimecode = (tf, fr) => {
+                const h = Math.floor(tf / (3600*fr)); tf %= (3600*fr);
+                const m = Math.floor(tf / (60*fr)); tf %= (60*fr);
+                const s = Math.floor(tf / fr); const f = tf % fr;
+                return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}:${String(f).padStart(2,'0')}`;
             };
-
-            const framesToTimecode = (totalFrames, framerate) => {
-                const hours = Math.floor(totalFrames / (3600 * framerate));
-                totalFrames %= (3600 * framerate);
-                const minutes = Math.floor(totalFrames / (60 * framerate));
-                totalFrames %= (60 * framerate);
-                const seconds = Math.floor(totalFrames / framerate);
-                const frames = totalFrames % framerate;
-                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
-            };
-
-            const addTimecode = (tc, framesToAdd, framerate) => {
-                const totalFrames = parseTimecode(tc, framerate) + framesToAdd;
-                return framesToTimecode(totalFrames, framerate);
-            };
-
-            const subtractTimecode = (tc, framesToSubtract, framerate) => {
-                const totalFrames = Math.max(0, parseTimecode(tc, framerate) - framesToSubtract);
-                return framesToTimecode(totalFrames, framerate);
-            };
+            const addTimecode = (tc, fa, fr) => framesToTimecode(parseTimecode(tc, fr) + fa, fr);
+            const subtractTimecode = (tc, fs, fr) => framesToTimecode(Math.max(0, parseTimecode(tc, fr) - fs), fr);
 
             const processEDLFile = (file) => {
-                // Check if file has .edl or .txt extension
-                const validExtensions = ['.edl', '.txt'];
-                const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-                
-                if (!validExtensions.includes(fileExtension)) {
-                    setStatus(`Error: Invalid file type. Please upload an EDL file (.edl or .txt)`);
-                    return;
-                }
-                
+                const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                if (!['.edl', '.txt'].includes(ext)) { setStatus('Error: Invalid file type. Please upload an EDL file (.edl or .txt)'); return; }
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    const text = event.target.result;
-                    const parsed = parseEDL(text);
-                    // Always store the original uploaded filename (without extension)
-                    const filenameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
-                    parsed.edl_metadata.edl_filename = filenameWithoutExt;
-                    // If TITLE is empty, use the filename
-                    if (!parsed.edl_metadata.edl_title || parsed.edl_metadata.edl_title.trim() === '') {
-                        parsed.edl_metadata.edl_title = filenameWithoutExt;
-                    }
+                reader.onload = (e) => {
+                    const parsed = parseEDL(e.target.result);
+                    const fname = file.name.replace(/\.[^/.]+$/, '');
+                    parsed.edl_metadata.edl_filename = fname;
+                    if (!parsed.edl_metadata.edl_title?.trim()) parsed.edl_metadata.edl_title = fname;
                     setEdlData(parsed);
-                    setStatus(`EDL loaded: ${parsed.events.length} events found (filename: ${filenameWithoutExt})`);
+                    setStatus(`EDL loaded: ${parsed.events.length} events found`);
                 };
                 reader.readAsText(file);
             };
 
             const processBinFile = (file) => {
-                // Check if file has .txt or .tab extension
-                const validExtensions = ['.txt', '.tab'];
-                const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-                
-                if (!validExtensions.includes(fileExtension)) {
-                    setStatus(`Error: Invalid file type. Please upload a Bin file (.txt or .tab)`);
-                    return;
-                }
-                
+                const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                if (!['.txt', '.tab'].includes(ext)) { setStatus('Error: Invalid file type. Please upload a Bin file (.txt or .tab)'); return; }
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    const text = event.target.result;
-                    const lines = text.split('\n');
+                reader.onload = (e) => {
+                    const lines = e.target.result.split('\n');
                     const headers = lines[0].split('\t');
-                    const nameIndex = headers.indexOf('Name');
-                    const data = lines.slice(1).filter(line => line.trim()).map(line => {
-                        const values = line.split('\t');
-                        return { Name: values[nameIndex] || '' };
-                    });
+                    const nameIdx = headers.indexOf('Name');
+                    const data = lines.slice(1).filter(l => l.trim()).map(l => ({ Name: l.split('\t')[nameIdx] || '' }));
                     setBinData(data);
                     setStatus(`Bin file loaded: ${data.length} entries found`);
                 };
                 reader.readAsText(file);
             };
 
-            const handleEDLUpload = (e) => {
-                const file = e.target.files[0];
-                if (file) processEDLFile(file);
-            };
-
-            const handleBinUpload = (e) => {
-                const file = e.target.files[0];
-                if (file) processBinFile(file);
-            };
-
-            const handleEDLDrag = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            };
-
-            const handleEDLDragIn = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setEdlDragActive(true);
-            };
-
-            const handleEDLDragOut = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setEdlDragActive(false);
-            };
-
-            const handleEDLDrop = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setEdlDragActive(false);
-                
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                    processEDLFile(e.dataTransfer.files[0]);
-                }
-            };
-
-            const handleBinDrag = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            };
-
-            const handleBinDragIn = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setBinDragActive(true);
-            };
-
-            const handleBinDragOut = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setBinDragActive(false);
-            };
-
-            const handleBinDrop = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setBinDragActive(false);
-                
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                    processBinFile(e.dataTransfer.files[0]);
-                }
-            };
-
             const downloadFile = (content, filename) => {
                 const blob = new Blob([content], { type: 'text/plain' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 setStatus(`Downloaded: ${filename}`);
             };
 
             const exportMarkers = () => {
                 if (!edlData) return;
-                const user = 'vfx';
-                const trackNumber = 'V1';
-                const markerColor = 'green';
-                let content = '';
-                
-                edlData.events.forEach(event => {
-                    content += `${user}\t${event.record_start_TC}\t${trackNumber}\t${markerColor}\t${event['VFX ID']}\t1\n`;
-                });
-                
-                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
-                downloadFile(content, `${baseFilename}_markers.txt`);
+                const bn = edlData.edl_metadata.edl_filename || 'output';
+                downloadFile(edlData.events.map(e => `vfx\t${e.record_start_TC}\tV1\tgreen\t${e['VFX ID']}\t1`).join('\n'), `${bn}_markers.txt`);
             };
 
             const exportSubcaps = () => {
                 if (!edlData) return;
-                let content = '<begin subtitles>\n';
-                
-                edlData.events.forEach(event => {
-                    content += `${event.record_start_TC} ${event.record_end_TC}\n`;
-                    content += `${event['VFX ID']}\n\n`;
-                });
-                
-                content += '<end subtitles>\n';
-                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
-                downloadFile(content, `${baseFilename}_subcaps.txt`);
+                const bn = edlData.edl_metadata.edl_filename || 'output';
+                const content = '<begin subtitles>\n' + edlData.events.map(e => `${e.record_start_TC} ${e.record_end_TC}\n${e['VFX ID']}\n`).join('\n') + '<end subtitles>\n';
+                downloadFile(content, `${bn}_subcaps.txt`);
             };
 
             const exportALEPulls = () => {
                 if (!edlData) return;
-                const framerate = parseInt(fps);
-                const heading = `Heading
-FIELD_DELIM\tTABS
-VIDEO_FORMAT\t1080
-AUDIO_FORMAT\t48khz
-FPS\t${fps}
-
-Column
-Name\tTracks\tStart\tEnd\tTape
-Data
-
-`;
-                
-                let content = heading;
-                edlData.events.forEach(event => {
-                    const newStart = subtractTimecode(event.source_start_TC, handles, framerate);
-                    const newEnd = addTimecode(event.source_end_TC, handles, framerate);
-                    content += `${event['VFX ID']}\tV\t${newStart}\t${newEnd}\t${event.reel}\n`;
+                const fr = parseInt(fps), bn = edlData.edl_metadata.edl_filename || 'output';
+                let content = `Heading\nFIELD_DELIM\tTABS\nVIDEO_FORMAT\t1080\nAUDIO_FORMAT\t48khz\nFPS\t${fps}\n\nColumn\nName\tTracks\tStart\tEnd\tTape\nData\n\n`;
+                edlData.events.forEach(e => {
+                    content += `${e['VFX ID']}\tV\t${subtractTimecode(e.source_start_TC, handles, fr)}\t${addTimecode(e.source_end_TC, handles, fr)}\t${e.reel}\n`;
                 });
-                
-                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
-                downloadFile(content, `${baseFilename}.ALE`);
+                downloadFile(content, `${bn}.ALE`);
             };
 
             const exportPullsEDL = () => {
                 if (!edlData) return;
-                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
-                let content = `TITLE: ${baseFilename}_pulls\nFCM: NON-DROP FRAME\n`;
-                
-                edlData.events.forEach(event => {
-                    content += `${event.event_number} ${event['VFX ID']} ${event.track} ${event.transition} ${event.source_start_TC} ${event.source_end_TC} ${event.record_start_TC} ${event.record_end_TC}\n`;
-                });
-                
-                downloadFile(content, `${baseFilename}_pulls.edl`);
+                const bn = edlData.edl_metadata.edl_filename || 'output';
+                const content = `TITLE: ${bn}_pulls\nFCM: NON-DROP FRAME\n` + edlData.events.map(e => `${e.event_number} ${e['VFX ID']} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}`).join('\n');
+                downloadFile(content, `${bn}_pulls.edl`);
             };
 
             const exportDummyEDL = () => {
                 if (!edlData) return;
-                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
-                let content = `TITLE: ${baseFilename}_dummy\nFCM: NON-DROP FRAME\n`;
-                
-                edlData.events.forEach(event => {
-                    content += `${event.event_number} ${event['VFX ID']} ${event.track} ${event.transition} ${event.source_start_TC} ${event.source_end_TC} ${event.record_start_TC} ${event.record_end_TC}\n`;
-                });
-                
-                downloadFile(content, `${baseFilename}_dummy.edl`);
+                const bn = edlData.edl_metadata.edl_filename || 'output';
+                const content = `TITLE: ${bn}_dummy\nFCM: NON-DROP FRAME\n` + edlData.events.map(e => `${e.event_number} ${e['VFX ID']} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}`).join('\n');
+                downloadFile(content, `${bn}_dummy.edl`);
             };
 
             const exportGoogleTab = () => {
                 if (!edlData) return;
-                const framerate = parseInt(fps);
+                const fr = parseInt(fps), bn = edlData.edl_metadata.edl_filename || 'output';
                 let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tTape\n';
-                
-                edlData.events.forEach((event, index) => {
-                    const startFrames = parseTimecode(event.source_start_TC, framerate);
-                    const endFrames = parseTimecode(event.source_end_TC, framerate);
-                    const durationFrames = endFrames - startFrames;
-                    const duration = framesToTimecode(durationFrames, framerate);
-                    
-                    content += `${index + 1}\t${event['VFX ID']}\t\t\t\t\t${duration}\t${event.source_start_TC}\t${event.source_end_TC}\t${durationFrames}\t${event.reel}\n`;
+                edlData.events.forEach((e, i) => {
+                    const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
+                    content += `${i+1}\t${e['VFX ID']}\t\t\t\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${e.reel}\n`;
                 });
-                
-                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
-                downloadFile(content, `${baseFilename}_TAB.txt`);
+                downloadFile(content, `${bn}_TAB.txt`);
             };
 
             const exportFinalVFXEDL = () => {
-                if (!edlData || !binData) {
-                    setStatus('Please upload both EDL and Bin files');
-                    return;
-                }
-                
-                const baseFilename = edlData.edl_metadata.edl_filename || edlData.edl_metadata.edl_title || 'output';
-                let content = `TITLE: ${baseFilename}_vfx_final\nFCM: NON-DROP FRAME\n`;
-                
-                binData.forEach(binEntry => {
-                    edlData.events.forEach(event => {
-                        if (binEntry.Name.includes(event['VFX ID'])) {
-                            content += `${event.event_number} ${binEntry.Name} ${event.track} ${event.transition} ${event.source_start_TC} ${event.source_end_TC} ${event.record_start_TC} ${event.record_end_TC}\n`;
-                        }
-                    });
-                });
-                
-                downloadFile(content, `${baseFilename}_vfx_final.edl`);
+                if (!edlData || !binData) { setStatus('Error: Please upload both EDL and Bin files'); return; }
+                const bn = edlData.edl_metadata.edl_filename || 'output';
+                let content = `TITLE: ${bn}_vfx_final\nFCM: NON-DROP FRAME\n`;
+                binData.forEach(b => edlData.events.forEach(e => {
+                    if (b.Name.includes(e['VFX ID'])) content += `${e.event_number} ${b.Name} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}\n`;
+                }));
+                downloadFile(content, `${bn}_vfx_final.edl`);
             };
 
-            const Icon = ({ path }) => (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} />
-                </svg>
-            );
+            const handleDrag = (e, setter, val) => { e.preventDefault(); e.stopPropagation(); setter(val); };
+            const handleDrop = (e, processor, setter) => { e.preventDefault(); e.stopPropagation(); setter(false); if (e.dataTransfer.files?.[0]) processor(e.dataTransfer.files[0]); };
+
+            const Icon = ({ path }) => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} /></svg>;
 
             return (
                 <div className="min-h-screen bg-gray-50 p-6">
                     <div className="max-w-6xl mx-auto">
                         <div className="bg-white rounded shadow-sm p-6 border border-gray-200">
-                            
-                            {/* Header */}
                             <div className="pb-5 mb-6 border-b border-gray-200">
-                                <h1 className="text-2xl font-semibold text-gray-900">VFX Turnover Tool</h1>
-                            </div>
-
-                            {/* Settings */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1 uppercase">Film ID</label>
-                                    <input
-                                        type="text"
-                                        value={filmId}
-                                        onChange={(e) => setFilmId(e.target.value)}
-                                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-900"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1 uppercase">FPS</label>
-                                    <input
-                                        type="text"
-                                        value={fps}
-                                        onChange={(e) => setFps(e.target.value)}
-                                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-900"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1 uppercase">Handles</label>
-                                    <input
-                                        type="number"
-                                        value={handles}
-                                        onChange={(e) => setHandles(parseInt(e.target.value))}
-                                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-900"
-                                    />
+                                <h1 className="text-2xl font-semibold text-gray-900 mb-4">VFX Turnover Tool</h1>
+                                <div className="flex gap-2">
+                                    {['main', 'info', 'help'].map(p => (
+                                        <button key={p} onClick={() => setCurrentPage(p)} className={`px-4 py-2 text-sm rounded transition ${currentPage === p ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                                            {p.charAt(0).toUpperCase() + p.slice(1)}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
-                            {/* File Upload - EDL Only */}
-                            <div className="mb-6">
-                                <div
-                                    onDragEnter={handleEDLDragIn}
-                                    onDragLeave={handleEDLDragOut}
-                                    onDragOver={handleEDLDrag}
-                                    onDrop={handleEDLDrop}
-                                    className={`bg-gray-50 border-2 border-dashed rounded p-6 text-center cursor-pointer transition ${
-                                        edlDragActive ? 'border-gray-900 bg-gray-100' : 'border-gray-300 hover:border-gray-400'
-                                    }`}
-                                >
-                                    <label className="cursor-pointer block">
-                                        <div className="text-gray-400 mb-2 flex justify-center">
-                                            <Icon path="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                        </div>
-                                        <span className="text-sm font-medium text-gray-700">
-                                            {edlDragActive ? 'Drop EDL file here' : 'Drag & drop EDL file or click to browse'}
-                                        </span>
-                                        <div className="text-xs text-gray-500 mt-1">.edl, .txt</div>
-                                        {edlData && <div className="mt-2 text-xs text-gray-600">✓ {edlData.events.length} events loaded</div>}
-                                        <input type="file" accept=".edl,.txt" onChange={handleEDLUpload} className="hidden" />
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Export Buttons */}
-                            <div className="mb-6">
-                                <h2 className="text-xs font-medium text-gray-500 mb-3 uppercase">Export Options</h2>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    <button onClick={exportMarkers} disabled={!edlData} className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm transition">Markers</button>
-                                    <button onClick={exportSubcaps} disabled={!edlData} className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm transition">Subcaps</button>
-                                    <button onClick={exportALEPulls} disabled={!edlData} className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm transition">ALE Pulls</button>
-                                    <button onClick={exportPullsEDL} disabled={!edlData} className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm transition">Pulls EDL</button>
-                                    <button onClick={exportDummyEDL} disabled={!edlData} className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm transition">Dummy EDL</button>
-                                    <button onClick={exportGoogleTab} disabled={!edlData} className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm transition">Google Tab</button>
-                                </div>
-                            </div>
-
-                            {/* Status */}
-                            {status && (
-                                <div className={`border rounded p-3 text-sm mb-6 ${
-                                    status.startsWith('Error') 
-                                        ? 'bg-red-50 border-red-300 text-red-700' 
-                                        : 'bg-gray-100 border-gray-300 text-gray-700'
-                                }`}>
-                                    {status}
-                                </div>
-                            )}
-
-                            {/* Preview */}
-                            {edlData && (
-                                <div className="bg-gray-50 border border-gray-200 rounded p-4 mb-6">
-                                    <h3 className="text-xs font-medium text-gray-500 mb-3 uppercase">Preview</h3>
-                                    <div className="text-sm text-gray-700 space-y-1 mb-4">
-                                        <p><span className="font-medium">Filename:</span> {edlData.edl_metadata.edl_filename}.edl</p>
-                                        <p><span className="font-medium">Events:</span> {edlData.events.length}</p>
-                                    </div>
-                                    <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-200 rounded">
-                                        <table className="w-full text-xs">
-                                            <thead className="bg-gray-100 text-gray-600 uppercase sticky top-0">
-                                                <tr>
-                                                    <th className="px-3 py-2 text-left">#</th>
-                                                    <th className="px-3 py-2 text-left">VFX ID</th>
-                                                    <th className="px-3 py-2 text-left">Reel</th>
-                                                    <th className="px-3 py-2 text-left">Source In</th>
-                                                    <th className="px-3 py-2 text-left">Source Out</th>
-                                                    <th className="px-3 py-2 text-left">Record In</th>
-                                                    <th className="px-3 py-2 text-left">Record Out</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="text-gray-700">
-                                                {edlData.events.map((event, idx) => (
-                                                    <tr key={idx} className="border-b border-gray-200">
-                                                        <td className="px-3 py-2">{event.event_number}</td>
-                                                        <td className={`px-3 py-2 font-mono ${event.LOC ? 'text-green-600 font-semibold' : ''}`}>
-                                                            {event['VFX ID']}
-                                                        </td>
-                                                        <td className="px-3 py-2">{event.reel}</td>
-                                                        <td className="px-3 py-2 font-mono">{event.source_start_TC}</td>
-                                                        <td className="px-3 py-2 font-mono">{event.source_end_TC}</td>
-                                                        <td className="px-3 py-2 font-mono">{event.record_start_TC}</td>
-                                                        <td className="px-3 py-2 font-mono">{event.record_end_TC}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Final VFX EDL Section */}
-                            <div className="pt-6 border-t border-gray-200">
-                                <h2 className="text-xs font-medium text-gray-500 mb-3 uppercase">Final VFX EDL</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                                    <div
-                                        onDragEnter={handleBinDragIn}
-                                        onDragLeave={handleBinDragOut}
-                                        onDragOver={handleBinDrag}
-                                        onDrop={handleBinDrop}
-                                        className={`bg-gray-50 border-2 border-dashed rounded p-4 text-center cursor-pointer transition ${
-                                            binDragActive ? 'border-gray-900 bg-gray-100' : 'border-gray-300 hover:border-gray-400'
-                                        }`}
-                                    >
-                                        <label className="cursor-pointer block">
-                                            <div className="text-gray-400 mb-1 flex justify-center">
-                                                <Icon path="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            {currentPage === 'main' && (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                        {[['Film ID', filmId, setFilmId, 'text'], ['FPS', fps, setFps, 'text'], ['Handles', handles, setHandles, 'number']].map(([label, val, setter, type]) => (
+                                            <div key={label}>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1 uppercase">{label}</label>
+                                                <input type={type} value={val} onChange={(e) => setter(type === 'number' ? parseInt(e.target.value) : e.target.value)} className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-900" />
                                             </div>
-                                            <span className="text-sm font-medium text-gray-700">
-                                                {binDragActive ? 'Drop Bin file here' : 'Upload Bin File'}
-                                            </span>
-                                            <div className="text-xs text-gray-500 mt-1">.txt, .tab</div>
-                                            {binData && <div className="mt-2 text-xs text-gray-600">✓ {binData.length} entries loaded</div>}
-                                            <input type="file" accept=".txt,.tab" onChange={handleBinUpload} className="hidden" />
-                                        </label>
+                                        ))}
                                     </div>
-                                    <button 
-                                        onClick={exportFinalVFXEDL} 
-                                        disabled={!edlData || !binData} 
-                                        className="px-4 py-3 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm font-medium transition h-full"
-                                    >
-                                        Export Final VFX EDL
-                                    </button>
+
+                                    <div className="mb-6">
+                                        <div onDragEnter={(e) => handleDrag(e, setEdlDragActive, true)} onDragLeave={(e) => handleDrag(e, setEdlDragActive, false)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, processEDLFile, setEdlDragActive)} className={`bg-gray-50 border-2 border-dashed rounded p-6 text-center cursor-pointer transition ${edlDragActive ? 'border-gray-900 bg-gray-100' : 'border-gray-300 hover:border-gray-400'}`}>
+                                            <label className="cursor-pointer block">
+                                                <div className="text-gray-400 mb-2 flex justify-center"><Icon path="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></div>
+                                                <span className="text-sm font-medium text-gray-700">{edlDragActive ? 'Drop EDL file here' : 'Drag & drop EDL file or click to browse'}</span>
+                                                <div className="text-xs text-gray-500 mt-1">.edl, .txt</div>
+                                                {edlData && <div className="mt-2 text-xs text-gray-600">✓ {edlData.events.length} events loaded</div>}
+                                                <input type="file" accept=".edl,.txt" onChange={(e) => e.target.files[0] && processEDLFile(e.target.files[0])} className="hidden" />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <h2 className="text-xs font-medium text-gray-500 mb-3 uppercase">Export Options</h2>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                            {[['Markers', exportMarkers], ['Subcaps', exportSubcaps], ['ALE Pulls', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['Dummy EDL', exportDummyEDL], ['Google Tab', exportGoogleTab]].map(([name, fn]) => (
+                                                <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm transition">{name}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {status && <div className={`border rounded p-3 text-sm mb-6 ${status.startsWith('Error') ? 'bg-red-50 border-red-300 text-red-700' : 'bg-gray-100 border-gray-300 text-gray-700'}`}>{status}</div>}
+
+                                    {edlData && (
+                                        <div className="bg-gray-50 border border-gray-200 rounded p-4 mb-6">
+                                            <h3 className="text-xs font-medium text-gray-500 mb-3 uppercase">Preview</h3>
+                                            <div className="text-sm text-gray-700 space-y-1 mb-4">
+                                                <p><span className="font-medium">Filename:</span> {edlData.edl_metadata.edl_filename}.edl</p>
+                                                <p><span className="font-medium">Events:</span> {edlData.events.length}</p>
+                                            </div>
+                                            <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-200 rounded">
+                                                <table className="w-full text-xs">
+                                                    <thead className="bg-gray-100 text-gray-600 uppercase sticky top-0">
+                                                        <tr>{['#', 'VFX ID', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
+                                                    </thead>
+                                                    <tbody className="text-gray-700">
+                                                        {edlData.events.map((e, i) => (
+                                                            <tr key={i} className="border-b border-gray-200">
+                                                                <td className="px-3 py-2">{e.event_number}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.LOC ? 'text-green-600 font-semibold' : ''}`}>{e['VFX ID']}</td>
+                                                                <td className="px-3 py-2">{e.reel}</td>
+                                                                <td className="px-3 py-2 font-mono">{e.source_start_TC}</td>
+                                                                <td className="px-3 py-2 font-mono">{e.source_end_TC}</td>
+                                                                <td className="px-3 py-2 font-mono">{e.record_start_TC}</td>
+                                                                <td className="px-3 py-2 font-mono">{e.record_end_TC}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="pt-6 border-t border-gray-200">
+                                        <h2 className="text-xs font-medium text-gray-500 mb-3 uppercase">Final VFX EDL</h2>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                                            <div onDragEnter={(e) => handleDrag(e, setBinDragActive, true)} onDragLeave={(e) => handleDrag(e, setBinDragActive, false)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, processBinFile, setBinDragActive)} className={`bg-gray-50 border-2 border-dashed rounded p-4 text-center cursor-pointer transition ${binDragActive ? 'border-gray-900 bg-gray-100' : 'border-gray-300 hover:border-gray-400'}`}>
+                                                <label className="cursor-pointer block">
+                                                    <div className="text-gray-400 mb-1 flex justify-center"><Icon path="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></div>
+                                                    <span className="text-sm font-medium text-gray-700">{binDragActive ? 'Drop Bin file here' : 'Upload Bin File'}</span>
+                                                    <div className="text-xs text-gray-500 mt-1">.txt, .tab</div>
+                                                    {binData && <div className="mt-2 text-xs text-gray-600">✓ {binData.length} entries loaded</div>}
+                                                    <input type="file" accept=".txt,.tab" onChange={(e) => e.target.files[0] && processBinFile(e.target.files[0])} className="hidden" />
+                                                </label>
+                                            </div>
+                                            <button onClick={exportFinalVFXEDL} disabled={!edlData || !binData} className="px-4 py-3 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm font-medium transition h-full">Export Final VFX EDL</button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {currentPage === 'info' && (
+                                <div className="max-w-none text-sm text-gray-700 space-y-4">
+                                    <h2 className="text-xl font-semibold text-gray-900">About</h2>
+                                    <p>The VFX Turnover Tool streamlines VFX sequence preparation for post-production. It processes EDL files and generates multiple output formats for VFX production.</p>
+                                    <h3 className="text-base font-semibold text-gray-900 mt-6">Features</h3>
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        <li>Automatic VFX ID generation based on scene numbers</li>
+                                        <li>Support for existing markers (LOC lines)</li>
+                                        <li>Multiple export formats</li>
+                                        <li>Timecode calculations with customizable FPS and handles</li>
+                                        <li>Drag-and-drop file upload</li>
+                                    </ul>
+                                    <h3 className="text-base font-semibold text-gray-900 mt-6">VFX ID Format</h3>
+                                    <p>Format: <code className="bg-gray-100 px-2 py-1 rounded">FILM_ID_SCENE_SHOT</code> (e.g., FILM_ID_001_010)</p>
+                                    <h3 className="text-base font-semibold text-gray-900 mt-6">Supported Files</h3>
+                                    <p><strong>EDL:</strong> .edl, .txt | <strong>Bin:</strong> .txt, .tab</p>
                                 </div>
-                            </div>
+                            )}
+
+                            {currentPage === 'help' && (
+                                <div className="max-w-none text-sm text-gray-700 space-y-6">
+                                    <h2 className="text-xl font-semibold text-gray-900">How to Use</h2>
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900 mb-2">1. Configure Settings</h3>
+                                        <ul className="list-disc pl-5 space-y-1">
+                                            <li><strong>Film ID:</strong> Project identifier</li>
+                                            <li><strong>FPS:</strong> Frame rate (default: 24)</li>
+                                            <li><strong>Handles:</strong> Extra frames (default: 10)</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900 mb-2">2. Upload EDL</h3>
+                                        <p>Drag & drop or click to browse. Green VFX IDs = existing markers, Gray = auto-generated.</p>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900 mb-2">3. Export Files</h3>
+                                        <ul className="list-disc pl-5 space-y-1">
+                                            <li><strong>Markers:</strong> Timeline markers</li>
+                                            <li><strong>Subcaps:</strong> Subtitle format</li>
+                                            <li><strong>ALE Pulls:</strong> Avid Log Exchange with handles</li>
+                                            <li><strong>Pulls/Dummy EDL:</strong> VFX/placeholder EDLs</li>
+                                            <li><strong>Google Tab:</strong> Spreadsheet import</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900 mb-2">4. Final VFX EDL</h3>
+                                        <p>Upload Bin file (.txt/.tab) with rendered clip names, then export final EDL.</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
