@@ -73,7 +73,7 @@
 
             const processEDLFile = (file) => {
                 const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-                if (!['.edl', '.txt'].includes(ext)) { setStatus('Error: Invalid file type. Please upload an EDL file (.edl or .txt)'); return; }
+                if (!['.edl', '.txt'].includes(ext)) { setStatus('Error: Invalid file type. Please upload an EDL file (.edl)'); return; }
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const parsed = parseEDL(e.target.result);
@@ -139,13 +139,6 @@
                 const bn = edlData.edl_metadata.edl_filename || 'output';
                 const content = `TITLE: ${bn}_pulls\nFCM: NON-DROP FRAME\n` + edlData.events.map(e => `${e.event_number} ${e['VFX ID']} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}`).join('\n');
                 downloadFile(content, `${bn}_pulls.edl`);
-            };
-
-            const exportDummyEDL = () => {
-                if (!edlData) return;
-                const bn = edlData.edl_metadata.edl_filename || 'output';
-                const content = `TITLE: ${bn}_dummy\nFCM: NON-DROP FRAME\n` + edlData.events.map(e => `${e.event_number} ${e['VFX ID']} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}`).join('\n');
-                downloadFile(content, `${bn}_dummy.edl`);
             };
 
             const exportGoogleTab = () => {
@@ -215,7 +208,7 @@
                                     <div className="mb-6">
                                         <h2 className="text-xs font-medium text-gray-500 mb-3 uppercase">Export Options</h2>
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                            {[['Markers', exportMarkers], ['Subcaps', exportSubcaps], ['ALE Pulls', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['Dummy EDL', exportDummyEDL], ['Google Tab', exportGoogleTab]].map(([name, fn]) => (
+                                            {[['Markers', exportMarkers], ['Subcaps', exportSubcaps], ['ALE Pulls', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['Google Tab', exportGoogleTab]].map(([name, fn]) => (
                                                 <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm transition">{name}</button>
                                             ))}
                                         </div>
@@ -311,7 +304,7 @@
                                             <li><strong>Markers:</strong> Timeline markers</li>
                                             <li><strong>Subcaps:</strong> Subtitle format</li>
                                             <li><strong>ALE Pulls:</strong> Avid Log Exchange with handles</li>
-                                            <li><strong>Pulls/Dummy EDL:</strong> VFX/placeholder EDLs</li>
+                                            <li><strong>Pulls EDL:</strong> VFX EDL format</li>
                                             <li><strong>Google Tab:</strong> Spreadsheet import</li>
                                         </ul>
                                     </div>
