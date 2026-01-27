@@ -247,7 +247,7 @@
                                     )}
 
                                     <div className="pt-6 border-t border-gray-200">
-                                        <h2 className="text-xs font-medium text-gray-500 mb-3 uppercase">Final VFX EDL</h2>
+                                        <h2 className="text-xs font-medium text-gray-500 mb-3 uppercase">Incoming VFX EDL</h2>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                             <div onDragEnter={(e) => handleDrag(e, setBinDragActive, true)} onDragLeave={(e) => handleDrag(e, setBinDragActive, false)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, processBinFile, setBinDragActive)} className={`bg-gray-50 border-2 border-dashed rounded p-4 text-center cursor-pointer transition ${binDragActive ? 'border-gray-900 bg-gray-100' : 'border-gray-300 hover:border-gray-400'}`}>
                                                 <label className="cursor-pointer block">
@@ -258,7 +258,7 @@
                                                     <input type="file" accept=".txt,.tab" onChange={(e) => e.target.files[0] && processBinFile(e.target.files[0])} className="hidden" />
                                                 </label>
                                             </div>
-                                            <button onClick={exportFinalVFXEDL} disabled={!edlData || !binData} className="px-4 py-3 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm font-medium transition h-full">Export Final VFX EDL</button>
+                                            <button onClick={exportFinalVFXEDL} disabled={!edlData || !binData} className="px-4 py-3 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm font-medium transition h-full">Export Incoming VFX EDL</button>
                                         </div>
                                     </div>
                                 </>
@@ -280,6 +280,8 @@
                                     <p>Format: <code className="bg-gray-100 px-2 py-1 rounded">FILM_ID_SCENE_SHOT</code> (e.g., FILM_ID_001_010)</p>
                                     <h3 className="text-base font-semibold text-gray-900 mt-6">Supported Files</h3>
                                     <p><strong>EDL:</strong> .edl, .txt | <strong>Bin:</strong> .txt, .tab</p>
+                                    <h3 className="text-base font-semibold text-gray-900 mt-6">Contact</h3>
+                                    <p><a href="mailto:pnardese@gmail.com">pnardese@gmail.com</a></p>
                                 </div>
                             )}
 
