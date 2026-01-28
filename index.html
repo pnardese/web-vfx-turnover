@@ -61,7 +61,16 @@
                         lastEvent['VFX ID'] = loc.split(/\s+/).pop();
                     } else if ((line.startsWith('*SOURCE') || line.startsWith('* SOURCE')) && lastEvent) {
                         const sourceIndex = line.indexOf('SOURCE');
-                        lastEvent.SOURCE = line.substring(sourceIndex + 6).trim();
+                        let sourceValue = line.substring(sourceIndex + 6).trim();
+                        // Strip "FILE:" prefix if present (CMX 3600 format)
+                        if (sourceValue.toUpperCase().startsWith('FILE:')) {
+                            sourceValue = sourceValue.substring(5).trim();
+                        }
+                        lastEvent.SOURCE = sourceValue;
+                        // For CMX 3600: if SOURCE has full filename and reel is truncated, use SOURCE as reel
+                        if (sourceValue && sourceValue.length > lastEvent.reel.length) {
+                            lastEvent.reel = sourceValue;
+                        }
                         if (!lastEvent.LOC && !lastEvent['VFX ID']) {
                             const match = lastEvent.FROM.match(/\d+/);
                             if (match) {
