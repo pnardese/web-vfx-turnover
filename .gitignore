@@ -18,6 +18,5 @@ venv/
 *.swp
 
 # Project specific
-markers.png
 test/
-vfx_turnover.py
+docs/
