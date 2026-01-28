@@ -286,7 +286,7 @@
                                             <div onDragEnter={(e) => handleDrag(e, setBinDragActive, true)} onDragLeave={(e) => handleDrag(e, setBinDragActive, false)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, processBinFile, setBinDragActive)} className={`bg-gray-50 border-2 border-dashed rounded p-4 text-center cursor-pointer transition ${binDragActive ? 'border-gray-900 bg-gray-100' : 'border-gray-300 hover:border-gray-400'}`}>
                                                 <label className="cursor-pointer block">
                                                     <div className="text-gray-400 mb-1 flex justify-center"><Icon path="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></div>
-                                                    <span className="text-sm font-medium text-gray-700">{binDragActive ? 'Drop AVID Bin file here' : 'Upload AVID Bin File'}</span>
+                                                    <span className="text-sm font-medium text-gray-700">{binDragActive ? 'Drop AVID Bin file here' : 'Drag & drop AVID Bin File or click to browse'}</span>
                                                     <div className="text-xs text-gray-500 mt-1">.txt</div>
                                                     {binData && <div className="mt-2 text-xs text-gray-600">✓ {binData.length} entries loaded</div>}
                                                     <input type="file" accept=".txt" onChange={(e) => e.target.files[0] && processBinFile(e.target.files[0])} className="hidden" />
