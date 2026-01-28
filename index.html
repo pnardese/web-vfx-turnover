@@ -50,13 +50,18 @@
                         const m = line.match(edlLineRegex);
                         lastEvent = { type: 'event', event_number: m[1], reel: m[2], track: m[3], transition: m[4], source_start_TC: m[5], source_end_TC: m[6], record_start_TC: m[7], record_end_TC: m[8], FROM: '', LOC: '', SOURCE: '', 'VFX ID': '' };
                         edlData.events.push(lastEvent);
-                    } else if (line.startsWith('*FROM') && lastEvent) lastEvent.FROM = line.substring(5).trim();
-                    else if (line.startsWith('*LOC:') && lastEvent) {
-                        const loc = line.substring(5).trim();
+                    } else if ((line.startsWith('*FROM') || line.startsWith('* FROM')) && lastEvent) {
+                        const fromIndex = line.indexOf('FROM');
+                        lastEvent.FROM = line.substring(fromIndex + 4).trim();
+                    }
+                    else if ((line.startsWith('*LOC:') || line.startsWith('* LOC:')) && lastEvent) {
+                        const locIndex = line.indexOf('LOC:');
+                        const loc = line.substring(locIndex + 4).trim();
                         lastEvent.LOC = loc;
                         lastEvent['VFX ID'] = loc.split(/\s+/).pop();
-                    } else if (line.startsWith('*SOURCE') && lastEvent) {
-                        lastEvent.SOURCE = line.substring(7).trim();
+                    } else if ((line.startsWith('*SOURCE') || line.startsWith('* SOURCE')) && lastEvent) {
+                        const sourceIndex = line.indexOf('SOURCE');
+                        lastEvent.SOURCE = line.substring(sourceIndex + 6).trim();
                         if (!lastEvent.LOC && !lastEvent['VFX ID']) {
                             const match = lastEvent.FROM.match(/\d+/);
                             if (match) {
@@ -338,7 +343,7 @@
                                     <h3 className="text-base font-semibold text-gray-900 mt-6">VFX ID Format</h3>
                                     <p>Format: <code className="bg-gray-100 px-2 py-1 rounded">FILM_ID_SCENE_SHOT</code> (e.g., FILM_ID_001_010)</p>
                                     <h3 className="text-base font-semibold text-gray-900 mt-6">Supported Files</h3>
-                                    <p><strong>EDL:</strong> .edl, .txt | <strong>Bin:</strong> .txt, .tab</p>
+                                    <p><strong>EDL:</strong> .edl (CMX 3600, extended reel names) | <strong>Bin:</strong> .txt, .tab</p>
                                     <h3 className="text-base font-semibold text-gray-900 mt-6">Contact</h3>
                                     <p><a href="mailto:pnardese@gmail.com">pnardese@gmail.com</a></p>
                                 </div>
