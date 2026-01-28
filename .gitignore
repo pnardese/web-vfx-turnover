@@ -16,3 +16,8 @@ venv/
 # Miscellaneous
 .DS_Store
 *.swp
+
+# Project specific
+markers.png
+test/
+vfx_turnover.py

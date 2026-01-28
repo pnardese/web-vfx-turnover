@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VFX Turnover Tool</title>
+    <title>VFX Turnover Tool v0.1</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -12,18 +12,28 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect } = React;
 
         const VFXTurnoverApp = () => {
             const [currentPage, setCurrentPage] = useState('main');
             const [edlData, setEdlData] = useState(null);
-            const [filmId, setFilmId] = useState('FILM_ID');
-            const [fps, setFps] = useState('24');
-            const [handles, setHandles] = useState(10);
+            const [filmId, setFilmId] = useState(() => localStorage.getItem('vfx_filmId') || 'FILM_ID');
+            const [fps, setFps] = useState(() => localStorage.getItem('vfx_fps') || '24');
+            const [handles, setHandles] = useState(() => { const v = parseInt(localStorage.getItem('vfx_handles')); return isNaN(v) ? 10 : v; });
             const [binData, setBinData] = useState(null);
             const [status, setStatus] = useState('');
             const [edlDragActive, setEdlDragActive] = useState(false);
             const [binDragActive, setBinDragActive] = useState(false);
+            const [markerUser, setMarkerUser] = useState(() => localStorage.getItem('vfx_markerUser') || 'VFX');
+            const [markerTrack, setMarkerTrack] = useState(() => localStorage.getItem('vfx_markerTrack') || 'V1');
+            const [markerColor, setMarkerColor] = useState(() => localStorage.getItem('vfx_markerColor') || 'green');
+
+            useEffect(() => { localStorage.setItem('vfx_filmId', filmId); }, [filmId]);
+            useEffect(() => { localStorage.setItem('vfx_fps', fps); }, [fps]);
+            useEffect(() => { if (!isNaN(handles)) localStorage.setItem('vfx_handles', handles); }, [handles]);
+            useEffect(() => { localStorage.setItem('vfx_markerUser', markerUser); }, [markerUser]);
+            useEffect(() => { localStorage.setItem('vfx_markerTrack', markerTrack); }, [markerTrack]);
+            useEffect(() => { localStorage.setItem('vfx_markerColor', markerColor); }, [markerColor]);
 
             const parseEDL = (edlText) => {
                 const lines = edlText.split('\n');
@@ -73,7 +83,7 @@
 
             const processEDLFile = (file) => {
                 const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-                if (!['.edl', '.txt'].includes(ext)) { setStatus('Error: Invalid file type. Please upload an EDL file (.edl)'); return; }
+                if (ext !== '.edl') { setStatus('Error: Invalid file type. Please upload an EDL file (.edl)'); return; }
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const parsed = parseEDL(e.target.result);
@@ -88,13 +98,18 @@
 
             const processBinFile = (file) => {
                 const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-                if (!['.txt', '.tab'].includes(ext)) { setStatus('Error: Invalid file type. Please upload an AVID Bin file (.txt or .tab)'); return; }
+                if (ext !== '.txt') { setStatus('Error: Invalid file type. Please upload an AVID Bin file (.txt)'); return; }
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const lines = e.target.result.split('\n');
+                    const lines = e.target.result.split(/\r\n|\r|\n/);
                     const headers = lines[0].split('\t');
                     const nameIdx = headers.indexOf('Name');
-                    const data = lines.slice(1).filter(l => l.trim()).map(l => ({ Name: l.split('\t')[nameIdx] || '' }));
+                    const startIdx = headers.indexOf('Start');
+                    const endIdx = headers.indexOf('End');
+                    const data = lines.slice(1).filter(l => l.trim()).map(l => {
+                        const cols = l.split('\t');
+                        return { Name: cols[nameIdx] || '', Start: cols[startIdx] || '', End: cols[endIdx] || '' };
+                    });
                     setBinData(data);
                     setStatus(`AVID Bin file loaded: ${data.length} entries found`);
                 };
@@ -114,7 +129,7 @@
             const exportMarkers = () => {
                 if (!edlData) return;
                 const bn = edlData.edl_metadata.edl_filename || 'output';
-                downloadFile(edlData.events.map(e => `vfx\t${e.record_start_TC}\tV1\tgreen\t${e['VFX ID']}\t1`).join('\n'), `${bn}_markers.txt`);
+                downloadFile(edlData.events.map(e => `${markerUser}\t${e.record_start_TC}\t${markerTrack}\t${markerColor}\t${e['VFX ID']}\t1`).join('\n'), `${bn}_markers.txt`);
             };
 
             const exportSubcaps = () => {
@@ -155,11 +170,11 @@
             const exportFinalVFXEDL = () => {
                 if (!edlData || !binData) { setStatus('Error: Please upload both EDL and AVID Bin files'); return; }
                 const bn = edlData.edl_metadata.edl_filename || 'output';
-                let content = `TITLE: ${bn}_vfx_final\nFCM: NON-DROP FRAME\n`;
+                let content = `TITLE: ${bn}_incoming\nFCM: NON-DROP FRAME\n`;
                 binData.forEach(b => edlData.events.forEach(e => {
-                    if (b.Name.includes(e['VFX ID'])) content += `${e.event_number} ${b.Name} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}\n`;
+                    if (b.Start === e.source_start_TC && b.End === e.source_end_TC) content += `${e.event_number} ${b.Name} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}\n`;
                 }));
-                downloadFile(content, `${bn}_vfx_final.edl`);
+                downloadFile(content, `${bn}_incoming.edl`);
             };
 
             const handleDrag = (e, setter, val) => { e.preventDefault(); e.stopPropagation(); setter(val); };
@@ -172,7 +187,7 @@
                     <div className="max-w-6xl mx-auto">
                         <div className="bg-white rounded shadow-sm p-6 border border-gray-200">
                             <div className="pb-5 mb-6 border-b border-gray-200">
-                                <h1 className="text-2xl font-semibold text-gray-900 mb-4">VFX Turnover Tool</h1>
+                                <h1 className="text-2xl font-semibold text-gray-900 mb-4">VFX Turnover Tool v0.1</h1>
                                 <div className="flex gap-2">
                                     {['main', 'info', 'help'].map(p => (
                                         <button key={p} onClick={() => setCurrentPage(p)} className={`px-4 py-2 text-sm rounded transition ${currentPage === p ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
@@ -198,17 +213,36 @@
                                             <label className="cursor-pointer block">
                                                 <div className="text-gray-400 mb-2 flex justify-center"><Icon path="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></div>
                                                 <span className="text-sm font-medium text-gray-700">{edlDragActive ? 'Drop EDL file here' : 'Drag & drop EDL file or click to browse'}</span>
-                                                <div className="text-xs text-gray-500 mt-1">.edl, .txt</div>
+                                                <div className="text-xs text-gray-500 mt-1">.edl</div>
                                                 {edlData && <div className="mt-2 text-xs text-gray-600">✓ {edlData.events.length} events loaded</div>}
-                                                <input type="file" accept=".edl,.txt" onChange={(e) => e.target.files[0] && processEDLFile(e.target.files[0])} className="hidden" />
+                                                <input type="file" accept=".edl" onChange={(e) => e.target.files[0] && processEDLFile(e.target.files[0])} className="hidden" />
                                             </label>
                                         </div>
                                     </div>
 
                                     <div className="mb-6">
                                         <h2 className="text-xs font-medium text-gray-500 mb-3 uppercase">Export Options</h2>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                            {[['Markers', exportMarkers], ['Subcaps', exportSubcaps], ['ALE Pulls', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['Google Tab', exportGoogleTab]].map(([name, fn]) => (
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2 items-end">
+                                            <button onClick={exportMarkers} disabled={!edlData} className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm transition">Markers</button>
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">User</label>
+                                                <input type="text" value={markerUser} onChange={(e) => setMarkerUser(e.target.value)} className="w-full px-2 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-900" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Track</label>
+                                                <select value={markerTrack} onChange={(e) => setMarkerTrack(e.target.value)} className="w-full px-2 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-900">
+                                                    {['V1','V2','V3','V4','V5','V6','V7','V8'].map(v => <option key={v} value={v}>{v}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Color</label>
+                                                <select value={markerColor} onChange={(e) => setMarkerColor(e.target.value)} className="w-full px-2 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-900">
+                                                    {['red','green','blue','cyan','magenta','yellow','black','white'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                            {[['Subcaps', exportSubcaps], ['ALE Pulls', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['Google Tab', exportGoogleTab]].map(([name, fn]) => (
                                                 <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm transition">{name}</button>
                                             ))}
                                         </div>
@@ -253,13 +287,38 @@
                                                 <label className="cursor-pointer block">
                                                     <div className="text-gray-400 mb-1 flex justify-center"><Icon path="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></div>
                                                     <span className="text-sm font-medium text-gray-700">{binDragActive ? 'Drop AVID Bin file here' : 'Upload AVID Bin File'}</span>
-                                                    <div className="text-xs text-gray-500 mt-1">.txt, .tab</div>
+                                                    <div className="text-xs text-gray-500 mt-1">.txt</div>
                                                     {binData && <div className="mt-2 text-xs text-gray-600">✓ {binData.length} entries loaded</div>}
-                                                    <input type="file" accept=".txt,.tab" onChange={(e) => e.target.files[0] && processBinFile(e.target.files[0])} className="hidden" />
+                                                    <input type="file" accept=".txt" onChange={(e) => e.target.files[0] && processBinFile(e.target.files[0])} className="hidden" />
                                                 </label>
                                             </div>
                                             <button onClick={exportFinalVFXEDL} disabled={!edlData || !binData} className="px-4 py-3 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white rounded text-sm font-medium transition h-full">Export Incoming VFX EDL</button>
                                         </div>
+                                        {binData && (
+                                            <div className="bg-gray-50 border border-gray-200 rounded p-4 mt-4">
+                                                <h3 className="text-xs font-medium text-gray-500 mb-3 uppercase">Incoming VFX Preview</h3>
+                                                <div className="text-sm text-gray-700 space-y-1 mb-4">
+                                                    <p><span className="font-medium">Entries:</span> {binData.length}</p>
+                                                </div>
+                                                <div className="overflow-x-auto max-h-64 overflow-y-auto border border-gray-200 rounded">
+                                                    <table className="w-full text-xs">
+                                                        <thead className="bg-gray-100 text-gray-600 uppercase sticky top-0">
+                                                            <tr>{['#', 'Name', 'Start', 'End'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
+                                                        </thead>
+                                                        <tbody className="text-gray-700">
+                                                            {binData.map((b, i) => (
+                                                                <tr key={i} className="border-b border-gray-200">
+                                                                    <td className="px-3 py-2">{i + 1}</td>
+                                                                    <td className="px-3 py-2 font-mono">{b.Name}</td>
+                                                                    <td className="px-3 py-2 font-mono">{b.Start}</td>
+                                                                    <td className="px-3 py-2 font-mono">{b.End}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}
@@ -267,7 +326,7 @@
                             {currentPage === 'info' && (
                                 <div className="max-w-none text-sm text-gray-700 space-y-4">
                                     <h2 className="text-xl font-semibold text-gray-900">About</h2>
-                                    <p>The VFX Turnover Tool streamlines VFX sequence preparation for post-production. It processes EDL files and generates multiple output formats for VFX production.</p>
+                                    <p>The VFX Turnover Tool v0.1 streamlines VFX sequence preparation for post-production. It processes EDL files and generates multiple output formats for VFX production.</p>
                                     <h3 className="text-base font-semibold text-gray-900 mt-6">Features</h3>
                                     <ul className="list-disc pl-5 space-y-1">
                                         <li>Automatic VFX ID generation based on scene numbers</li>
