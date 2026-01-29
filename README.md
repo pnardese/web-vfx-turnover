@@ -90,9 +90,31 @@ Single-page web application built with:
 
 ## Installation
 
-No installation required. Simply open `index.html` in a web browser.
+### Option 1: Direct File Access
 
-Alternatively, host on any static web server.
+Simply open `index.html` in a web browser.
+
+### Option 2: Local HTTP Server
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/pnardese/web-vfx-turnover.git
+   cd web-vfx-turnover
+   ```
+
+2. Start a local HTTP server using Python:
+   ```bash
+   python -m http.server 8000
+   ```
+
+3. Open your browser and navigate to:
+   ```
+   http://localhost:8000
+   ```
+
+### Option 3: Static Web Server
+
+Host the files on any static web server (Apache, Nginx, etc.).
 
 ## Contact
 
