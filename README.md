@@ -1,6 +1,6 @@
 # VFX Turnover Tool v0.1
 
-A web-based tool that streamlines VFX sequence preparation for post-production. It processes EDL files and generates multiple output formats for VFX production workflows.
+A web-based tool that streamlines VFX sequence preparation for post-production workflows in Avid Media Composer. It processes EDL files and generates multiple output formats for VFX production workflows.
 
 ## Features
 
