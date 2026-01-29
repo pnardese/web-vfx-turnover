@@ -90,9 +90,9 @@ Single-page web application built with:
 
 ## Installation
 
-### Option 1: Direct File Access
+### Option 1: Online
 
-Simply open `index.html` in a web browser.
+Access the tool directly at: [https://pnardese.github.io/web-vfx-turnover/](https://pnardese.github.io/web-vfx-turnover/)
 
 ### Option 2: Local HTTP Server
 
