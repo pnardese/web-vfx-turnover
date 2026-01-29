@@ -352,7 +352,7 @@
                                     <h3 className="text-base font-semibold text-[#14b8a6] mt-6">VFX ID Format</h3>
                                     <p>Format: <code className="bg-[#1a2530] px-2 py-1 rounded text-[#14b8a6]">FILM_ID_SCENE_SHOT</code> (e.g., FILM_ID_001_010)</p>
                                     <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Supported Files</h3>
-                                    <p><strong className="text-white">EDL:</strong> .edl (File_129, CMX 3600) | <strong className="text-white">Bin:</strong> .txt, .tab</p>
+                                    <p><strong className="text-white">EDL:</strong> .edl (File_129, CMX 3600) | <strong className="text-white">Bin:</strong> .txt</p>
                                     <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Contact</h3>
                                     <p><a href="mailto:pnardese@gmail.com" className="text-[#14b8a6] hover:underline">pnardese@gmail.com</a></p>
                                 </div>
@@ -360,32 +360,48 @@
 
                             {currentPage === 'help' && (
                                 <div className="max-w-none text-sm text-gray-300 space-y-6">
-                                    <h2 className="text-xl font-semibold text-white">How to Use</h2>
+                                    <h2 className="text-xl font-semibold text-white">Help</h2>
+
                                     <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">1. Configure Settings</h3>
-                                        <ul className="list-disc pl-5 space-y-1">
-                                            <li><strong className="text-white">Film ID:</strong> Project identifier</li>
-                                            <li><strong className="text-white">FPS:</strong> Frame rate (default: 24)</li>
-                                            <li><strong className="text-white">Handles:</strong> Extra frames (default: 10)</li>
-                                        </ul>
+                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">1. Create EDL from Avid</h3>
+                                        <p className="mb-3">Create an EDL (File_129 or CMX3600) from the Avid video track containing only shots planned for VFX. In List Options in Avid, check: <strong className="text-white">Clip Names</strong>, <strong className="text-white">Source File Name</strong>, and <strong className="text-white">Markers</strong>.</p>
+                                        <p className="mb-3">VFX IDs are created automatically based on the following rule: <code className="bg-[#1a2530] px-2 py-1 rounded text-[#14b8a6]">FILE_ID_Scene_num</code>, where num is a progressive number like 010, 020, 030, etc.</p>
+                                        <p className="mb-3">Existing markers on timeline are imported into the tool as existing VFX IDs (you can find them in the EDL as *LOC/* LOC lines). Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs to re-import them correctly into the tool.</p>
+                                        <img src="imgs/01_create_edl.png" alt="Configuration of the list tool in Avid Media Composer for EDL exporting" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                                        <p className="text-xs text-gray-500 mt-1">Configuration of the list tool in Avid Media Composer for EDL exporting.</p>
                                     </div>
+
                                     <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">2. Upload EDL</h3>
-                                        <p>Drag & drop or click to browse. <span className="text-[#14b8a6]">Teal VFX IDs</span> = existing markers, <span className="text-gray-400">Gray</span> = auto-generated.</p>
+                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">2. Export Markers and Subcaps</h3>
+                                        <p>Export markers and subcaps and import them into Avid to help keep track of VFXs.</p>
                                     </div>
+
                                     <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">3. Export Files</h3>
-                                        <ul className="list-disc pl-5 space-y-1">
-                                            <li><strong className="text-white">Markers:</strong> Timeline markers</li>
-                                            <li><strong className="text-white">Subcaps:</strong> Subtitle format</li>
-                                            <li><strong className="text-white">ALE Pulls:</strong> Avid Log Exchange with handles</li>
-                                            <li><strong className="text-white">Pulls EDL:</strong> VFX EDL format</li>
-                                            <li><strong className="text-white">Google Tab:</strong> Spreadsheet import</li>
-                                        </ul>
+                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">3. Export Frames</h3>
+                                        <p className="mb-3">Export markers from Avid as JPGs to use them to build a VFX Shots database.</p>
+                                        <img src="imgs/02_export_frames.png" alt="Export settings for frame extraction at marker's position" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                                        <p className="text-xs text-gray-500 mt-1">Export settings for frame extraction at marker's position.</p>
                                     </div>
+
                                     <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">4. Final VFX EDL</h3>
-                                        <p>Upload AVID Bin file (.txt/.tab) with rendered clip names, then export final EDL.</p>
+                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">4. Export ALE Pulls</h3>
+                                        <p className="mb-3">Export ALE Pulls to create pulls (subclips with VFX IDs as names from the master clips). After selecting master clips in bin, drag ALE file on bin. Import settings: <em className="text-white">Merge events with known sources and automatically create subclips</em></p>
+                                        <img src="imgs/03_merge_events_ale.png" alt="Import settings" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                                        <p className="text-xs text-gray-500 mt-1">Import settings.</p>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">5. Export Pulls EDL</h3>
+                                        <p className="mb-3">Export Pulls EDL to create a timeline with the pull subclips. Import the EDL into Avid bin, relink to the pull subclips using Names.</p>
+                                        <img src="imgs/04_relink_edl_pulls.png" alt="Relink configuration" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                                        <p className="text-xs text-gray-500 mt-1">Relink configuration.</p>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">6. VFX Cut-ins</h3>
+                                        <p className="mb-3">When you receive incoming VFX (.mov files), you can import them into Avid, export the bin in TAB format to create an EDL for cutting in the VFX into the timeline. Columns: <strong className="text-white">Color</strong>, <strong className="text-white">Name</strong>, <strong className="text-white">Duration</strong>, <strong className="text-white">Start</strong>, <strong className="text-white">End</strong>, <strong className="text-white">Tape</strong>.</p>
+                                        <img src="imgs/05_vfx_cutins.png" alt="Columns to export from Avid bin as TAB text file" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                                        <p className="text-xs text-gray-500 mt-1">Columns to export from Avid bin as TAB text file.</p>
                                     </div>
                                 </div>
                             )}
