@@ -10,6 +10,8 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 - **Timecode Calculations** - Customizable FPS and handles
 - **Drag-and-Drop Interface** - Easy file upload
 - **Persistent Settings** - Configuration saved locally in browser
+- **Persistent File Data** - Loaded EDL and AVID Bin files are preserved across browser sessions
+- **Clear Data Controls** - Easily clear loaded files with one-click buttons
 - **Incoming VFX EDL** - Match VFX vendor clips to original EDL by source timecodes
 
 ## Workflow Guide
@@ -63,6 +65,16 @@ When you receive incoming VFX (.mov files), you can import them into Avid, expor
 | Film ID | Project identifier used in VFX IDs | FILM_ID |
 | FPS | Frame rate for timecode calculations | 24 |
 | Handles | Extra frames added to pulls | 10 |
+
+## Data Persistence
+
+All settings and loaded file data are automatically saved to your browser's local storage:
+
+- **Settings** - Film ID, FPS, Handles, Marker User, Track, and Color
+- **Loaded Files** - EDL and AVID Bin file data persist across browser sessions
+- **File Names** - The names of loaded files are displayed in the upload zones and preview sections
+
+Use the clear buttons (X) next to the upload zones to remove loaded file data.
 
 ## Export Options
 
