@@ -291,8 +291,9 @@
                                                 </label>
                                             </div>
                                             {edlData && (
-                                                <button onClick={clearEdlData} className="px-4 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-xl text-sm transition flex items-center" title="Clear EDL">
+                                                <button onClick={clearEdlData} className="px-4 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-xl text-sm transition flex items-center gap-2" title="Clear EDL">
                                                     <Icon path="M6 18L18 6M6 6l12 12" />
+                                                    <span>EDL Clear</span>
                                                 </button>
                                             )}
                                         </div>
@@ -375,8 +376,9 @@
                                                     </label>
                                                 </div>
                                                 {binData && (
-                                                    <button onClick={clearBinData} className="px-3 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-xl text-sm transition flex items-center" title="Clear AVID Bin">
+                                                    <button onClick={clearBinData} className="px-3 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-xl text-sm transition flex items-center gap-2" title="Clear AVID Bin">
                                                         <Icon path="M6 18L18 6M6 6l12 12" />
+                                                        <span>AVID Bin Clear</span>
                                                     </button>
                                                 )}
                                             </div>
