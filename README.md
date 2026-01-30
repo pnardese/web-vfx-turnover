@@ -71,7 +71,7 @@ When you receive incoming VFX (.mov files), you can import them into Avid, expor
 
 All settings and loaded file data are automatically saved to your browser's local storage:
 
-- **Settings** - Film ID, FPS, Handles, Marker User, Track, and Color
+- **Settings** - Film ID, FPS, Handles, Marker User, Position, Track, and Color
 - **Loaded Files** - EDL and AVID Bin file data persist across browser sessions
 - **File Names** - The names of loaded files are displayed in the upload zones and preview sections
 
@@ -91,7 +91,7 @@ Removed VFX IDs are shown for reference but are excluded from all exports.
 
 | Export | Description |
 |--------|-------------|
-| **Markers** | AVID timeline markers (configurable user, track V1-V8, and color) |
+| **Markers** | AVID timeline markers (configurable user, position start/middle, track V1-V8, and color) |
 | **Subcaps** | Subtitle format for burn-ins |
 | **ALE Pulls** | Avid Log Exchange file with handles for creating pulls |
 | **Pulls EDL** | EDL for cutting in VFX pulls |
