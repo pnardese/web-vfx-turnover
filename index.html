@@ -110,9 +110,40 @@
                     const fname = file.name.replace(/\.[^/.]+$/, '');
                     parsed.edl_metadata.edl_filename = fname;
                     if (!parsed.edl_metadata.edl_title?.trim()) parsed.edl_metadata.edl_title = fname;
+
+                    // Compare with cached EDL data
+                    const cachedEdl = edlData;
+                    let newCount = 0, removedCount = 0;
+
+                    if (cachedEdl && cachedEdl.events) {
+                        const cachedVfxIds = new Set(cachedEdl.events.filter(e => e.changeStatus !== 'removed').map(e => e['VFX ID']));
+                        const newVfxIds = new Set(parsed.events.map(e => e['VFX ID']));
+
+                        // Mark new events
+                        parsed.events.forEach(e => {
+                            if (!cachedVfxIds.has(e['VFX ID'])) {
+                                e.changeStatus = 'new';
+                                newCount++;
+                            } else {
+                                e.changeStatus = 'unchanged';
+                            }
+                        });
+
+                        // Add removed events from cache
+                        cachedEdl.events.filter(e => e.changeStatus !== 'removed').forEach(cachedEvent => {
+                            if (!newVfxIds.has(cachedEvent['VFX ID'])) {
+                                parsed.events.push({ ...cachedEvent, changeStatus: 'removed' });
+                                removedCount++;
+                            }
+                        });
+                    }
+
                     setEdlData(parsed);
                     setEdlFilePath(file.name);
-                    setStatus(`EDL loaded: ${parsed.events.length} events found`);
+                    const statusParts = [`EDL loaded: ${parsed.events.filter(e => e.changeStatus !== 'removed').length} events`];
+                    if (newCount > 0) statusParts.push(`${newCount} new`);
+                    if (removedCount > 0) statusParts.push(`${removedCount} removed`);
+                    setStatus(statusParts.join(', '));
                 };
                 reader.readAsText(file);
             };
@@ -160,16 +191,18 @@
                 setStatus(`Downloaded: ${filename}`);
             };
 
+            const getActiveEvents = () => edlData?.events.filter(e => e.changeStatus !== 'removed') || [];
+
             const exportMarkers = () => {
                 if (!edlData) return;
                 const bn = edlData.edl_metadata.edl_filename || 'output';
-                downloadFile(edlData.events.map(e => `${markerUser}\t${e.record_start_TC}\t${markerTrack}\t${markerColor}\t${e['VFX ID']}\t1`).join('\n'), `${bn}_markers.txt`);
+                downloadFile(getActiveEvents().map(e => `${markerUser}\t${e.record_start_TC}\t${markerTrack}\t${markerColor}\t${e['VFX ID']}\t1`).join('\n'), `${bn}_markers.txt`);
             };
 
             const exportSubcaps = () => {
                 if (!edlData) return;
                 const bn = edlData.edl_metadata.edl_filename || 'output';
-                const content = '<begin subtitles>\n' + edlData.events.map(e => `${e.record_start_TC} ${e.record_end_TC}\n${e['VFX ID']}\n`).join('\n') + '<end subtitles>\n';
+                const content = '<begin subtitles>\n' + getActiveEvents().map(e => `${e.record_start_TC} ${e.record_end_TC}\n${e['VFX ID']}\n`).join('\n') + '<end subtitles>\n';
                 downloadFile(content, `${bn}_subcaps.txt`);
             };
 
@@ -177,7 +210,7 @@
                 if (!edlData) return;
                 const fr = parseInt(fps), bn = edlData.edl_metadata.edl_filename || 'output';
                 let content = `Heading\nFIELD_DELIM\tTABS\nVIDEO_FORMAT\t1080\nAUDIO_FORMAT\t48khz\nFPS\t${fps}\n\nColumn\nName\tTracks\tStart\tEnd\tTape\nData\n\n`;
-                edlData.events.forEach(e => {
+                getActiveEvents().forEach(e => {
                     content += `${e['VFX ID']}\tV\t${subtractTimecode(e.source_start_TC, handles, fr)}\t${addTimecode(e.source_end_TC, handles, fr)}\t${e.reel}\n`;
                 });
                 downloadFile(content, `${bn}.ALE`);
@@ -186,7 +219,7 @@
             const exportPullsEDL = () => {
                 if (!edlData) return;
                 const bn = edlData.edl_metadata.edl_filename || 'output';
-                const content = `TITLE: ${bn}_pulls\nFCM: NON-DROP FRAME\n` + edlData.events.map(e => `${e.event_number} ${e['VFX ID']} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}`).join('\n');
+                const content = `TITLE: ${bn}_pulls\nFCM: NON-DROP FRAME\n` + getActiveEvents().map(e => `${e.event_number} ${e['VFX ID']} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}`).join('\n');
                 downloadFile(content, `${bn}_pulls.edl`);
             };
 
@@ -194,7 +227,7 @@
                 if (!edlData) return;
                 const fr = parseInt(fps), bn = edlData.edl_metadata.edl_filename || 'output';
                 let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tTape\n';
-                edlData.events.forEach((e, i) => {
+                getActiveEvents().forEach((e, i) => {
                     const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
                     content += `${i+1}\t${e['VFX ID']}\t\t\t\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${e.reel}\n`;
                 });
@@ -205,7 +238,8 @@
                 if (!edlData || !binData) { setStatus('Error: Please upload both EDL and AVID Bin files'); return; }
                 const bn = edlData.edl_metadata.edl_filename || 'output';
                 let content = `TITLE: ${bn}_incoming\nFCM: NON-DROP FRAME\n`;
-                binData.forEach(b => edlData.events.forEach(e => {
+                const activeEvents = getActiveEvents();
+                binData.forEach(b => activeEvents.forEach(e => {
                     if (b.Start === e.source_start_TC && b.End === e.source_end_TC) content += `${e.event_number} ${b.Name} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}\n`;
                 }));
                 downloadFile(content, `${bn}_incoming.edl`);
@@ -297,7 +331,11 @@
                                             <h3 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Preview</h3>
                                             <div className="text-sm text-gray-300 space-y-1 mb-4">
                                                 <p><span className="font-medium text-white">File:</span> {edlFilePath || `${edlData.edl_metadata.edl_filename}.edl`}</p>
-                                                <p><span className="font-medium text-white">Events:</span> {edlData.events.length}</p>
+                                                <p>
+                                                    <span className="font-medium text-white">Events:</span> {edlData.events.filter(e => e.changeStatus !== 'removed').length}
+                                                    {edlData.events.some(e => e.changeStatus === 'new') && <span className="ml-2 text-green-400">+{edlData.events.filter(e => e.changeStatus === 'new').length} new</span>}
+                                                    {edlData.events.some(e => e.changeStatus === 'removed') && <span className="ml-2 text-red-400">-{edlData.events.filter(e => e.changeStatus === 'removed').length} removed</span>}
+                                                </p>
                                             </div>
                                             <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
                                                 <table className="w-full text-xs">
@@ -306,14 +344,14 @@
                                                     </thead>
                                                     <tbody className="text-gray-300">
                                                         {edlData.events.map((e, i) => (
-                                                            <tr key={i} className="border-b border-[#1a2530] hover:bg-[#1a2530]/50">
-                                                                <td className="px-3 py-2">{e.event_number}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID']}</td>
-                                                                <td className="px-3 py-2">{e.reel}</td>
-                                                                <td className="px-3 py-2 font-mono">{e.source_start_TC}</td>
-                                                                <td className="px-3 py-2 font-mono">{e.source_end_TC}</td>
-                                                                <td className="px-3 py-2 font-mono">{e.record_start_TC}</td>
-                                                                <td className="px-3 py-2 font-mono">{e.record_end_TC}</td>
+                                                            <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : ''}`}>
+                                                                <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID']}</td>
+                                                                <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.reel}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_start_TC}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_end_TC}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_start_TC}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_end_TC}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -387,6 +425,7 @@
                                         <li>Drag-and-drop file upload</li>
                                         <li>Persistent settings and file data - settings, loaded EDL and AVID Bin files are saved across browser sessions</li>
                                         <li>Clear buttons to easily remove loaded files</li>
+                                        <li>Change tracking - new VFX IDs highlighted in green, removed ones in red</li>
                                     </ul>
                                     <h3 className="text-base font-semibold text-[#14b8a6] mt-6">VFX ID Format</h3>
                                     <p>Format: <code className="bg-[#1a2530] px-2 py-1 rounded text-[#14b8a6]">FILM_ID_SCENE_SHOT</code> (e.g., FILM_ID_001_010)</p>
@@ -437,7 +476,7 @@
                                     <div>
                                         <h3 className="text-base font-semibold text-[#14b8a6] mb-2">6. Export Pulls EDL</h3>
                                         <p className="mb-3">Export Pulls EDL to create a timeline with the pull subclips. Import the EDL into Avid bin, relink to the pull subclips using Names.</p>
-                                        <img src="imgs/04_relink_edl_pulls.png" alt="Relink configuration" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                                        <img src="imgs/04_relink_edl_pulls_v02.png" alt="Relink configuration" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
                                         <p className="text-xs text-gray-500 mt-1">Relink configuration.</p>
                                     </div>
 

@@ -12,6 +12,7 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 - **Persistent Settings** - Configuration saved locally in browser
 - **Persistent File Data** - Loaded EDL and AVID Bin files are preserved across browser sessions
 - **Clear Data Controls** - Easily clear loaded files with one-click buttons
+- **Change Tracking** - Compare new EDL with cached version: new VFX IDs in green, removed in red
 - **Incoming VFX EDL** - Match VFX vendor clips to original EDL by source timecodes
 
 ## Workflow Guide
@@ -50,7 +51,7 @@ Export ALE Pulls to create pulls (subclips with VFX IDs as names from the master
 
 Export Pulls EDL to create a timeline with the pull subclips. Import the EDL into Avid bin, relink to the pull subclips using Names.
 
-![Relink configuration](imgs/04_relink_edl_pulls.png)
+![Relink configuration](imgs/04_relink_edl_pulls_v02.png)
 
 ### 7. VFX Cut-ins
 
@@ -75,6 +76,16 @@ All settings and loaded file data are automatically saved to your browser's loca
 - **File Names** - The names of loaded files are displayed in the upload zones and preview sections
 
 Use the clear buttons (X) next to the upload zones to remove loaded file data.
+
+## Change Tracking
+
+When loading a new EDL file, the tool compares it with the previously cached version:
+
+- **Grey (unchanged)** - VFX IDs present in both versions
+- **Green (new)** - VFX IDs added in the new EDL
+- **Red with strikethrough (removed)** - VFX IDs no longer present in the new EDL
+
+Removed VFX IDs are shown for reference but are excluded from all exports.
 
 ## Export Options
 
