@@ -276,6 +276,8 @@
                                         ))}
                                     </div>
 
+                                    {status && <div className={`border rounded-lg p-3 text-sm mb-6 ${status.startsWith('Error') ? 'bg-red-900/20 border-red-800 text-red-400' : 'bg-[#14b8a6]/10 border-[#14b8a6]/30 text-[#14b8a6]'}`}>{status}</div>}
+
                                     <div className="mb-6">
                                         <div className="flex gap-2 items-stretch">
                                             <div onDragEnter={(e) => handleDrag(e, setEdlDragActive, true)} onDragLeave={(e) => handleDrag(e, setEdlDragActive, false)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, processEDLFile, setEdlDragActive)} className={`flex-1 bg-[#0a0f14] border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${edlDragActive ? 'border-[#14b8a6] bg-[#14b8a6]/10' : 'border-[#2a3545] hover:border-[#14b8a6]/50'}`}>
@@ -323,8 +325,6 @@
                                             ))}
                                         </div>
                                     </div>
-
-                                    {status && <div className={`border rounded-lg p-3 text-sm mb-6 ${status.startsWith('Error') ? 'bg-red-900/20 border-red-800 text-red-400' : 'bg-[#14b8a6]/10 border-[#14b8a6]/30 text-[#14b8a6]'}`}>{status}</div>}
 
                                     {edlData && (
                                         <div className="bg-[#0a0f14] border border-[#1a2530] rounded-xl p-4 mb-6">
