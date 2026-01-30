@@ -29,6 +29,7 @@
             const [markerUser, setMarkerUser] = useState(() => localStorage.getItem('vfx_markerUser') || 'VFX');
             const [markerTrack, setMarkerTrack] = useState(() => localStorage.getItem('vfx_markerTrack') || 'V1');
             const [markerColor, setMarkerColor] = useState(() => localStorage.getItem('vfx_markerColor') || 'green');
+            const [markerPosition, setMarkerPosition] = useState(() => localStorage.getItem('vfx_markerPosition') || 'start');
 
             useEffect(() => { localStorage.setItem('vfx_filmId', filmId); }, [filmId]);
             useEffect(() => { localStorage.setItem('vfx_fps', fps); }, [fps]);
@@ -36,6 +37,7 @@
             useEffect(() => { localStorage.setItem('vfx_markerUser', markerUser); }, [markerUser]);
             useEffect(() => { localStorage.setItem('vfx_markerTrack', markerTrack); }, [markerTrack]);
             useEffect(() => { localStorage.setItem('vfx_markerColor', markerColor); }, [markerColor]);
+            useEffect(() => { localStorage.setItem('vfx_markerPosition', markerPosition); }, [markerPosition]);
             useEffect(() => { if (edlData) localStorage.setItem('vfx_edlData', JSON.stringify(edlData)); else localStorage.removeItem('vfx_edlData'); }, [edlData]);
             useEffect(() => { localStorage.setItem('vfx_edlFilePath', edlFilePath); }, [edlFilePath]);
             useEffect(() => { if (binData) localStorage.setItem('vfx_binData', JSON.stringify(binData)); else localStorage.removeItem('vfx_binData'); }, [binData]);
@@ -196,13 +198,22 @@
             const exportMarkers = () => {
                 if (!edlData) return;
                 const bn = edlData.edl_metadata.edl_filename || 'output';
-                downloadFile(getActiveEvents().map(e => `${markerUser}\t${e.record_start_TC}\t${markerTrack}\t${markerColor}\t${e['VFX ID']}\t1`).join('\n'), `${bn}_markers.txt`);
+                const fr = parseInt(fps);
+                downloadFile(getActiveEvents().map(e => {
+                    let tc = e.record_start_TC;
+                    if (markerPosition === 'middle') {
+                        const startFrames = parseTimecode(e.record_start_TC, fr);
+                        const endFrames = parseTimecode(e.record_end_TC, fr);
+                        tc = framesToTimecode(Math.floor((startFrames + endFrames) / 2), fr);
+                    }
+                    return `${markerUser}\t${tc}\t${markerTrack}\t${markerColor}\t${e['VFX ID']}\t1`;
+                }).join('\n'), `${bn}_markers.txt`);
             };
 
             const exportSubcaps = () => {
                 if (!edlData) return;
                 const bn = edlData.edl_metadata.edl_filename || 'output';
-                const content = '<begin subtitles>\n' + getActiveEvents().map(e => `${e.record_start_TC} ${e.record_end_TC}\n${e['VFX ID']}\n`).join('\n') + '<end subtitles>\n';
+                const content = '<begin subtitles>\n' + getActiveEvents().map(e => `${e.record_start_TC} ${e.record_end_TC}\n${e['VFX ID']}\n`).join('\n') + '\n<end subtitles>\n';
                 downloadFile(content, `${bn}_subcaps.txt`);
             };
 
@@ -301,11 +312,17 @@
 
                                     <div className="mb-6">
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Export Options</h2>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2 items-end">
+                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 items-end">
                                             <button onClick={exportMarkers} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Markers</button>
                                             <div>
                                                 <label className="block text-xs text-gray-500 mb-1">User info</label>
                                                 <input type="text" value={markerUser} onChange={(e) => setMarkerUser(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Position</label>
+                                                <select value={markerPosition} onChange={(e) => setMarkerPosition(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
+                                                    {[['start', 'Start'], ['middle', 'Middle']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                                </select>
                                             </div>
                                             <div>
                                                 <label className="block text-xs text-gray-500 mb-1">Track</label>
