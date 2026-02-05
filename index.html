@@ -8,8 +8,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,200;1,700&family=Source+Code+Pro:wght@500&display=swap" rel="stylesheet">
 </head>
-<body>
+<body style="font-family: 'Source Code Pro', monospace; font-weight: 500; font-size: 20px;">
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -266,8 +269,8 @@
                     <div className="max-w-6xl mx-auto">
                         <div className="bg-[#0d1318] rounded-xl p-6 border border-[#1a2530]">
                             <div className="pb-5 mb-6 border-b border-[#1a2530]">
-                                <h1 className="text-2xl font-semibold text-white mb-1">VFX Turnover Tool v0.1</h1>
-                                <p className="text-sm text-gray-400 mb-4">VFX Workflow in Avid Media Composer</p>
+                                <h1 className="text-white mb-1 italic" style={{fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '48px'}}>VFX Turnover Tool v0.1</h1>
+                                <p className="text-gray-400 mb-4" style={{fontFamily: 'Inter, sans-serif', fontWeight: 200, fontSize: '24px'}}>VFX Workflow in Avid Media Composer</p>
                                 <div className="flex gap-2">
                                     {['main', 'info', 'help'].map(p => (
                                         <button key={p} onClick={() => setCurrentPage(p)} className={`px-4 py-2 text-sm rounded-lg transition ${currentPage === p ? 'bg-[#14b8a6] text-[#0a0f14] font-medium' : 'bg-[#1a2530] text-gray-300 hover:bg-[#243040] border border-[#2a3545]'}`}>
@@ -510,6 +513,10 @@
                                     </div>
                                 </div>
                             )}
+                        </div>
+                        <div className="text-center text-gray-500 text-sm mt-8 pb-4">
+                            <p>Designed by Enzo Nardese</p>
+                            <p>Contact: pnardese@gmail.com</p>
                         </div>
                     </div>
                 </div>
