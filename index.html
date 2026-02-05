@@ -342,7 +342,7 @@
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                            {[['Subcaps', exportSubcaps], ['ALE Pulls', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['Google Tab', exportGoogleTab]].map(([name, fn]) => (
+                                            {[['Subcaps', exportSubcaps], ['Pulls ALE', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['Google Tab', exportGoogleTab]].map(([name, fn]) => (
                                                 <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">{name}</button>
                                             ))}
                                         </div>
@@ -491,8 +491,8 @@
                                     </div>
 
                                     <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">5. Export ALE Pulls</h3>
-                                        <p className="mb-3">Export ALE Pulls to create pulls (subclips with VFX IDs as names from the master clips). After selecting master clips in bin, drag ALE file on bin. Import settings: <em className="text-white">Merge events with known sources and automatically create subclips</em></p>
+                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">5. Export Pulls ALE</h3>
+                                        <p className="mb-3">Export Pulls ALE to create pulls (subclips with VFX IDs as names from the master clips). After selecting master clips in bin, drag ALE file on bin. Import settings: <em className="text-white">Merge events with known sources and automatically create subclips</em></p>
                                         <img src="imgs/03_merge_events_ale.png" alt="Import settings" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
                                         <p className="text-xs text-gray-500 mt-1">Import settings.</p>
                                     </div>
