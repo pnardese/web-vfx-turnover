@@ -405,9 +405,6 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div className="mb-4">
-                                                <button onClick={exportSubcaps} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Subcaps</button>
-                                            </div>
                                             <div className="border-t border-[#1a2530] pt-3">
                                                 <div className="flex items-center gap-3 mb-2">
                                                     <span className="text-xs text-gray-500 uppercase">AAF Clip Notes</span>
@@ -440,6 +437,9 @@
                                                     </div>
                                                     <button onClick={exportAAF} disabled={!edlData || !aafFile || serverStatus !== 'online'} className="px-4 py-3 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Export AAF with VFX IDs</button>
                                                 </div>
+                                            </div>
+                                            <div className="border-t border-[#1a2530] pt-3 mt-1">
+                                                <button onClick={exportSubcaps} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Subcaps</button>
                                             </div>
                                         </div>
 
