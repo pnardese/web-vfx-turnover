@@ -375,10 +375,44 @@
                                         </div>
                                     </div>
 
+                                    {edlData && (
+                                        <div className="bg-[#0a0f14] border border-[#1a2530] rounded-xl p-4 mb-6">
+                                            <h3 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Preview</h3>
+                                            <div className="text-sm text-gray-300 space-y-1 mb-4">
+                                                <p><span className="font-medium text-white">File:</span> {edlFilePath || `${edlData.edl_metadata.edl_filename}.edl`}</p>
+                                                <p>
+                                                    <span className="font-medium text-white">Events:</span> {edlData.events.filter(e => e.changeStatus !== 'removed').length}
+                                                    {edlData.events.some(e => e.changeStatus === 'new') && <span className="ml-2 text-green-400">+{edlData.events.filter(e => e.changeStatus === 'new').length} new</span>}
+                                                    {edlData.events.some(e => e.changeStatus === 'removed') && <span className="ml-2 text-red-400">-{edlData.events.filter(e => e.changeStatus === 'removed').length} removed</span>}
+                                                </p>
+                                            </div>
+                                            <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
+                                                <table className="w-full text-xs">
+                                                    <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0">
+                                                        <tr>{['#', 'VFX ID', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
+                                                    </thead>
+                                                    <tbody className="text-gray-300">
+                                                        {edlData.events.map((e, i) => (
+                                                            <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : ''}`}>
+                                                                <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID']}</td>
+                                                                <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.reel}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_start_TC}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_end_TC}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_start_TC}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_end_TC}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="mb-6">
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Export Options</h2>
 
-                                        {/* --- Group 1: Markers / Subcaps / AAF Clip Notes --- */}
+                                        {/* --- Group 1: Markers / AAF Clip Notes / Subcaps --- */}
                                         <div className="mb-4">
                                             <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 items-end">
                                                 <button onClick={exportMarkers} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Markers</button>
@@ -439,7 +473,9 @@
                                                 </div>
                                             </div>
                                             <div className="border-t border-[#1a2530] pt-3 mt-1">
-                                                <button onClick={exportSubcaps} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Subcaps</button>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <button onClick={exportSubcaps} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Subcaps</button>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -452,40 +488,6 @@
                                             </div>
                                         </div>
                                     </div>
-
-                                    {edlData && (
-                                        <div className="bg-[#0a0f14] border border-[#1a2530] rounded-xl p-4 mb-6">
-                                            <h3 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Preview</h3>
-                                            <div className="text-sm text-gray-300 space-y-1 mb-4">
-                                                <p><span className="font-medium text-white">File:</span> {edlFilePath || `${edlData.edl_metadata.edl_filename}.edl`}</p>
-                                                <p>
-                                                    <span className="font-medium text-white">Events:</span> {edlData.events.filter(e => e.changeStatus !== 'removed').length}
-                                                    {edlData.events.some(e => e.changeStatus === 'new') && <span className="ml-2 text-green-400">+{edlData.events.filter(e => e.changeStatus === 'new').length} new</span>}
-                                                    {edlData.events.some(e => e.changeStatus === 'removed') && <span className="ml-2 text-red-400">-{edlData.events.filter(e => e.changeStatus === 'removed').length} removed</span>}
-                                                </p>
-                                            </div>
-                                            <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
-                                                <table className="w-full text-xs">
-                                                    <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0">
-                                                        <tr>{['#', 'VFX ID', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
-                                                    </thead>
-                                                    <tbody className="text-gray-300">
-                                                        {edlData.events.map((e, i) => (
-                                                            <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : ''}`}>
-                                                                <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID']}</td>
-                                                                <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.reel}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_start_TC}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_end_TC}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_start_TC}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_end_TC}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     <div className="pt-6 border-t border-[#1a2530]">
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Incoming VFX EDL</h2>
