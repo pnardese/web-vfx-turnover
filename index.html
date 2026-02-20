@@ -416,7 +416,7 @@
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch mb-4">
 
                                             {/* Markers */}
-                                            <div className="flex flex-col gap-2">
+                                            <div className="flex flex-col gap-2 border border-[#2a3545] rounded-lg p-3">
                                                 <button onClick={exportMarkers} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Markers</button>
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div>
@@ -445,7 +445,7 @@
                                             </div>
 
                                             {/* AAF Clip Notes */}
-                                            <div className="flex flex-col gap-2">
+                                            <div className="flex flex-col gap-2 border border-[#2a3545] rounded-lg p-3">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs text-gray-500 uppercase">AAF Clip Notes</span>
                                                     <span className={`text-xs px-2 py-0.5 rounded-full ${serverStatus === 'online' ? 'bg-[#14b8a6]/20 text-[#14b8a6]' : serverStatus === 'offline' ? 'bg-red-900/30 text-red-400' : 'bg-gray-700/50 text-gray-400'}`}>
@@ -477,7 +477,7 @@
                                             </div>
 
                                             {/* Subcaps */}
-                                            <div>
+                                            <div className="border border-[#2a3545] rounded-lg p-3">
                                                 <button onClick={exportSubcaps} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition w-full">Subcaps</button>
                                             </div>
 
