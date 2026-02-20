@@ -549,23 +549,32 @@
                             {currentPage === 'info' && (
                                 <div className="max-w-none text-sm text-gray-300 space-y-4">
                                     <h2 className="text-xl font-semibold text-white">About</h2>
-                                    <p>The VFX Turnover Tool v0.1 streamlines VFX sequence preparation for post-production. It processes EDL files and generates multiple output formats for VFX production.</p>
+                                    <p>The VFX Turnover Tool streamlines VFX sequence preparation for post-production. It processes EDL files and generates multiple output formats for VFX production workflows in Avid Media Composer.</p>
                                     <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Features</h3>
                                     <ul className="list-disc pl-5 space-y-1">
                                         <li>Automatic VFX ID generation based on scene numbers</li>
                                         <li>Support for existing markers (LOC lines)</li>
-                                        <li>Multiple export formats</li>
+                                        <li>Multiple export formats: Markers, Subcaps, Pulls ALE, Pulls EDL, DB Export, AAF Clip Notes</li>
+                                        <li><strong className="text-white">AAF Clip Notes</strong> — writes VFX IDs directly into Avid AAF files as clip notes, via a local Python server (<code className="bg-[#1a2530] px-1 rounded">./launch.sh</code>)</li>
                                         <li>Timecode calculations with customizable FPS and handles</li>
                                         <li>Drag-and-drop file upload</li>
-                                        <li>Marker position options - place markers at clip start or middle</li>
-                                        <li>Persistent settings and file data - settings, loaded EDL and AVID Bin files are saved across browser sessions</li>
+                                        <li>Marker position options — place markers at clip start or middle</li>
+                                        <li>Persistent settings and file data across browser sessions</li>
                                         <li>Clear buttons to easily remove loaded files</li>
-                                        <li>Change tracking - new VFX IDs highlighted in green, removed ones in red</li>
+                                        <li>Change tracking — new VFX IDs highlighted in green, removed ones in red</li>
                                     </ul>
                                     <h3 className="text-base font-semibold text-[#14b8a6] mt-6">VFX ID Format</h3>
                                     <p>Format: <code className="bg-[#1a2530] px-2 py-1 rounded text-[#14b8a6]">FILM_ID_SCENE_SHOT</code> (e.g., FILM_ID_001_010)</p>
                                     <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Supported Files</h3>
-                                    <p><strong className="text-white">EDL:</strong> .edl (File_129, CMX 3600) | <strong className="text-white">Bin:</strong> .txt</p>
+                                    <p><strong className="text-white">EDL:</strong> .edl (File_129, CMX 3600) | <strong className="text-white">Bin:</strong> .txt | <strong className="text-white">AAF:</strong> .aaf</p>
+                                    <h3 className="text-base font-semibold text-[#14b8a6] mt-6">AAF Clip Notes — local server required</h3>
+                                    <p className="mb-2">The AAF export requires a small Python server running locally. To start it:</p>
+                                    <ol className="list-decimal pl-5 space-y-1">
+                                        <li>Clone the repo and create a virtual environment: <code className="bg-[#1a2530] px-1 rounded">python3 -m venv .venv</code></li>
+                                        <li>Install dependencies: <code className="bg-[#1a2530] px-1 rounded">.venv/bin/pip install -r requirements_server.txt</code></li>
+                                        <li>Launch: <code className="bg-[#1a2530] px-1 rounded">./launch.sh</code></li>
+                                    </ol>
+                                    <p className="mt-2">The server status badge next to <em>AAF Clip Notes</em> shows whether the server is reachable. All other exports work without it.</p>
                                     <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Contact</h3>
                                     <p><a href="mailto:pnardese@gmail.com" className="text-[#14b8a6] hover:underline">pnardese@gmail.com</a></p>
                                 </div>
