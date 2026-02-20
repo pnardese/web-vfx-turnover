@@ -6,7 +6,8 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 
 - **Automatic VFX ID Generation** - Creates VFX IDs based on scene numbers (format: `FILM_ID_SCENE_SHOT`)
 - **Support for Existing Markers** - Recognizes LOC lines in EDL files
-- **Multiple Export Formats** - Markers, Subcaps, ALE, EDL, and spreadsheet formats
+- **Multiple Export Formats** - Markers, Subcaps, ALE, EDL, spreadsheet, and AAF clip notes
+- **AAF Clip Notes** - Writes VFX IDs directly into Avid AAF files as clip notes (requires local Python server)
 - **Timecode Calculations** - Customizable FPS and handles
 - **Drag-and-Drop Interface** - Easy file upload
 - **Persistent Settings** - Configuration saved locally in browser
@@ -23,7 +24,7 @@ Create an EDL (File_129 or CMX3600) from the Avid video track containing only sh
 
 VFX IDs are created automatically based on the following rule: `FILE_ID_Scene_num`, where num is a progressive number like 010, 020, 030, etc.
 
-Existing markers on timeline are imported into the tool as existing VFX IDs (you can find them in the EDL as `*LOC/*` LOC lines). Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs to re-import them correctly into the tool.
+Existing markers on timeline are imported into the tool as existing VFX IDs (you can find them in the EDL as `*LOC/*` LOC lines). Therefore, if you add VFX shots in Avid, you need to add markers with their newly created VFX IDs to re-import them correctly into the tool.
 
 ![Configuration of the list tool in Avid Media Composer for EDL exporting](imgs/01_create_edl.png)
 
@@ -92,8 +93,9 @@ Removed VFX IDs are shown for reference but are excluded from all exports.
 | Export | Description |
 |--------|-------------|
 | **Markers** | AVID timeline markers (configurable user, position start/middle, track V1-V8, and color) |
+| **AAF Clip Notes** | Copies the source AAF and writes VFX IDs as clip notes — requires local Python server (see Installation) |
 | **Subcaps** | Subtitle format for burn-ins |
-| **ALE Pulls** | Avid Log Exchange file with handles for creating pulls |
+| **Pulls ALE** | Avid Log Exchange file with handles for creating pulls |
 | **Pulls EDL** | EDL for cutting in VFX pulls |
 | **Google Tab** | Tab-delimited file for spreadsheet import |
 
@@ -103,41 +105,76 @@ Removed VFX IDs are shown for reference but are excluded from all exports.
 |------|------------|
 | EDL Input | `.edl` (File_129, CMX3600) |
 | AVID Bin | `.txt` |
+| AAF | `.aaf` (source sequence from Avid) |
 
 ## Technology
 
-Single-page web application built with:
-- React 18
-- Tailwind CSS
-- No server required - runs entirely in the browser
+- **Web app** — single-page application (React 18, Tailwind CSS), runs entirely in the browser with no build step
+- **AAF server** — small Flask microservice (`server.py`) required only for the AAF Clip Notes export; uses [pyaaf2](https://github.com/markreidvfx/pyaaf2) to write into Avid AAF binary files
 
 ## Installation
 
-### Option 1: Online
+### Option 1: Online (browser-only features)
 
 Access the tool directly at: [https://pnardese.github.io/web-vfx-turnover/](https://pnardese.github.io/web-vfx-turnover/)
 
-### Option 2: Local HTTP Server
+All exports except AAF Clip Notes work without any installation. The AAF export requires the local Python server described below.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/pnardese/web-vfx-turnover.git
-   cd web-vfx-turnover
-   ```
+---
 
-2. Start a local HTTP server using Python:
-   ```bash
-   python -m http.server 8000
-   ```
+### Option 2: Local (full features, including AAF Clip Notes)
 
-3. Open your browser and navigate to:
-   ```
-   http://localhost:8000
-   ```
+**Requirements:** Python 3.10+ and `git`.
 
-### Option 3: Static Web Server
+#### 1. Clone the repository
 
-Host the files on any static web server (Apache, Nginx, etc.).
+```bash
+git clone https://github.com/pnardese/web-vfx-turnover.git
+cd web-vfx-turnover
+```
+
+#### 2. Create a Python virtual environment and install dependencies
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements_server.txt
+```
+
+`requirements_server.txt` installs:
+
+| Package | Purpose |
+|---------|---------|
+| `flask` | HTTP microservice |
+| `flask-cors` | Allow browser requests from `file://` origin |
+| `pyaaf2` | Read/write Avid AAF files |
+
+#### 3. Launch
+
+```bash
+./launch.sh
+```
+
+`launch.sh` does two things:
+
+1. Starts `server.py` in the background on **`http://localhost:5000`** (skips this step if a server is already running on that port)
+2. Opens `index.html` in your default browser
+
+The web app checks the server status on load and shows a **server online / server offline** badge next to the AAF Clip Notes section. All other exports work even when the server is offline.
+
+#### Stopping the server
+
+Find the server process and kill it:
+
+```bash
+lsof -ti :5000 | xargs kill
+```
+
+---
+
+### Option 3: Static web server (browser-only features)
+
+Host the repository files on any static web server (Apache, Nginx, GitHub Pages, etc.). The AAF Clip Notes export will not be available unless `server.py` is also running locally on the client machine.
 
 ## Contact
 
