@@ -170,11 +170,6 @@ Find the server process and kill it:
 lsof -ti :5000 | xargs kill
 ```
 
----
-
-### Option 3: Static web server (browser-only features)
-
-Host the repository files on any static web server (Apache, Nginx, GitHub Pages, etc.). The AAF Clip Notes export will not be available unless `server.py` is also running locally on the client machine.
 
 ## Contact
 
