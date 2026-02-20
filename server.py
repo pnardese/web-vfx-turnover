@@ -101,7 +101,7 @@ def _write_aaf_clip_notes(events, input_aaf_path, output_aaf_path):
                         break
 
                 if not found:
-                    attr_list.append(aaf2.misc.TaggedValue(name='_COMMENT', value=vfx_id))
+                    attr_list.append(f.create.TaggedValue(name='_COMMENT', value=vfx_id))
 
                 print(f'  Clip {clip_num}: {clip_name} -> {vfx_id}')
 
