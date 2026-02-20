@@ -97,7 +97,7 @@ Removed VFX IDs are shown for reference but are excluded from all exports.
 | **Subcaps** | Subtitle format for burn-ins |
 | **Pulls ALE** | Avid Log Exchange file with handles for creating pulls |
 | **Pulls EDL** | EDL for cutting in VFX pulls |
-| **Google Tab** | Tab-delimited file for spreadsheet import |
+| **DB Export** | Tab-delimited file for spreadsheet / database import |
 
 ## Supported File Formats
 

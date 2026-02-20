@@ -486,7 +486,7 @@
                                         {/* --- Group 2: Pulls & Tab --- */}
                                         <div className="border-t border-[#1a2530] pt-4">
                                             <div className="grid grid-cols-3 gap-2">
-                                                {[['Pulls ALE', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['Google Tab', exportGoogleTab]].map(([name, fn]) => (
+                                                {[['Pulls ALE', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['DB Export', exportGoogleTab]].map(([name, fn]) => (
                                                     <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">{name}</button>
                                                 ))}
                                             </div>
