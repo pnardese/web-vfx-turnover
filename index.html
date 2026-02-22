@@ -37,6 +37,8 @@
             const [aafFilePath, setAafFilePath] = useState('');
             const [aafDragActive, setAafDragActive] = useState(false);
             const [serverStatus, setServerStatus] = useState('checking');
+            const [markersOpen, setMarkersOpen] = useState(false);
+            const [aafOpen, setAafOpen] = useState(false);
 
             useEffect(() => { localStorage.setItem('vfx_filmId', filmId); }, [filmId]);
             useEffect(() => { localStorage.setItem('vfx_fps', fps); }, [fps]);
@@ -416,40 +418,48 @@
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Export Options</h2>
 
                                         {/* --- Group 1: Markers / AAF Clip Notes / Subcaps --- */}
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch mb-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start mb-4">
 
                                             {/* Markers */}
                                             <div className="flex flex-col gap-2 border border-[#2a3545] rounded-lg p-3">
-                                                <button onClick={exportMarkers} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Markers</button>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">User info</label>
-                                                        <input type="text" value={markerUser} onChange={(e) => setMarkerUser(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
+                                                <button onClick={() => { if (edlData) setMarkersOpen(o => !o); }} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition flex items-center justify-between">
+                                                    <span>Markers</span>
+                                                    {edlData && <span className="text-xs opacity-70">{markersOpen ? '▲' : '▼'}</span>}
+                                                </button>
+                                                {markersOpen && (
+                                                    <div className="space-y-2 pt-1">
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">User info</label>
+                                                                <input type="text" value={markerUser} onChange={(e) => setMarkerUser(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">Position</label>
+                                                                <select value={markerPosition} onChange={(e) => setMarkerPosition(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
+                                                                    {[['start', 'Start'], ['middle', 'Middle']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">Track</label>
+                                                                <select value={markerTrack} onChange={(e) => setMarkerTrack(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
+                                                                    {['TC','V1','V2','V3','V4','V5','V6','V7','V8'].map(v => <option key={v} value={v}>{v}</option>)}
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">Color</label>
+                                                                <select value={markerColor} onChange={(e) => setMarkerColor(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
+                                                                    {['red','green','blue','cyan','magenta','yellow','black','white'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={exportMarkers} className="w-full px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium rounded-lg text-sm transition">Download</button>
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">Position</label>
-                                                        <select value={markerPosition} onChange={(e) => setMarkerPosition(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
-                                                            {[['start', 'Start'], ['middle', 'Middle']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">Track</label>
-                                                        <select value={markerTrack} onChange={(e) => setMarkerTrack(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
-                                                            {['TC','V1','V2','V3','V4','V5','V6','V7','V8'].map(v => <option key={v} value={v}>{v}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">Color</label>
-                                                        <select value={markerColor} onChange={(e) => setMarkerColor(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
-                                                            {['red','green','blue','cyan','magenta','yellow','black','white'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-                                                        </select>
-                                                    </div>
-                                                </div>
+                                                )}
                                             </div>
 
                                             {/* AAF Clip Notes */}
                                             <div className="flex flex-col gap-2 border border-[#2a3545] rounded-lg p-3">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 mb-1">
                                                     <span className="text-xs text-gray-500 uppercase">AAF Clip Notes</span>
                                                     <span className={`text-xs px-2 py-0.5 rounded-full ${serverStatus === 'online' ? 'bg-[#14b8a6]/20 text-[#14b8a6]' : serverStatus === 'offline' ? 'bg-red-900/30 text-red-400' : 'bg-gray-700/50 text-gray-400'}`}>
                                                         {serverStatus === 'online' ? 'server online' : serverStatus === 'offline' ? 'server offline' : 'checking...'}
@@ -460,23 +470,50 @@
                                                         Flask server not running. Start with <code className="bg-[#1a2530] px-1 rounded">./launch.sh</code>
                                                     </div>
                                                 )}
-                                                <div className="flex gap-2 items-stretch flex-1">
-                                                    <div onDragEnter={(e) => handleDrag(e, setAafDragActive, true)} onDragLeave={(e) => handleDrag(e, setAafDragActive, false)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, processAafFile, setAafDragActive)} className={`flex-1 bg-[#0a0f14] border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition ${aafDragActive ? 'border-[#14b8a6] bg-[#14b8a6]/10' : 'border-[#2a3545] hover:border-[#14b8a6]/50'}`}>
-                                                        <label className="cursor-pointer block">
-                                                            <div className="text-[#14b8a6] mb-1 flex justify-center"><Icon path="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></div>
-                                                            <span className="text-xs font-medium text-gray-300">{aafDragActive ? 'Drop AAF here' : 'Drag & drop .aaf or click'}</span>
-                                                            {aafFile && <div className="mt-1 text-xs text-[#14b8a6]">✓ {aafFilePath}</div>}
-                                                            <input type="file" accept=".aaf" onChange={(e) => e.target.files[0] && processAafFile(e.target.files[0])} className="hidden" />
-                                                        </label>
+                                                <button onClick={() => { if (edlData && serverStatus === 'online') setAafOpen(o => !o); }} disabled={!edlData || serverStatus !== 'online'} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition flex items-center justify-between">
+                                                    <span>Export AAF with VFX IDs</span>
+                                                    {edlData && serverStatus === 'online' && <span className="text-xs opacity-70">{aafOpen ? '▲' : '▼'}</span>}
+                                                </button>
+                                                {aafOpen && (
+                                                    <div className="space-y-2 pt-1">
+                                                        <div className="flex gap-2 items-stretch">
+                                                            <div onDragEnter={(e) => handleDrag(e, setAafDragActive, true)} onDragLeave={(e) => handleDrag(e, setAafDragActive, false)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, processAafFile, setAafDragActive)} className={`flex-1 bg-[#0a0f14] border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition ${aafDragActive ? 'border-[#14b8a6] bg-[#14b8a6]/10' : 'border-[#2a3545] hover:border-[#14b8a6]/50'}`}>
+                                                                <label className="cursor-pointer block">
+                                                                    <div className="text-[#14b8a6] mb-1 flex justify-center"><Icon path="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></div>
+                                                                    <span className="text-xs font-medium text-gray-300">{aafDragActive ? 'Drop AAF here' : 'Drag & drop .aaf or click'}</span>
+                                                                    {aafFile && <div className="mt-1 text-xs text-[#14b8a6]">✓ {aafFilePath}</div>}
+                                                                    <input type="file" accept=".aaf" onChange={(e) => e.target.files[0] && processAafFile(e.target.files[0])} className="hidden" />
+                                                                </label>
+                                                            </div>
+                                                            {aafFile && (
+                                                                <button onClick={clearAafData} className="px-2 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-lg text-xs transition flex flex-col items-center justify-center" title="Clear AAF">
+                                                                    <span>Clear</span>
+                                                                    <svg className="w-4 h-4 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">User info</label>
+                                                                <input type="text" value={markerUser} onChange={(e) => setMarkerUser(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">Position</label>
+                                                                <select value={markerPosition} onChange={(e) => setMarkerPosition(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
+                                                                    {[['start', 'Start'], ['middle', 'Middle']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                                                </select>
+                                                            </div>
+                                                            <div className="col-span-2">
+                                                                <label className="block text-xs text-gray-500 mb-1">Color</label>
+                                                                <select value={markerColor} onChange={(e) => setMarkerColor(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
+                                                                    {['red','green','blue','cyan','magenta','yellow','black','white'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500">Track auto-detected from AAF</p>
+                                                        <button onClick={exportAAF} disabled={!aafFile} className="w-full px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Export</button>
                                                     </div>
-                                                    {aafFile && (
-                                                        <button onClick={clearAafData} className="px-2 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-lg text-xs transition flex flex-col items-center justify-center" title="Clear AAF">
-                                                            <span>Clear</span>
-                                                            <svg className="w-4 h-4 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                <button onClick={exportAAF} disabled={!edlData || !aafFile || serverStatus !== 'online'} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Export AAF with VFX IDs</button>
+                                                )}
                                             </div>
 
                                             {/* Subcaps */}
