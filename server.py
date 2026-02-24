@@ -191,7 +191,7 @@ def _write_aaf_clip_notes(events, input_aaf_path, output_aaf_path,
                     attr_list.append(tv)
 
                 # Write clip color
-                if clip_color != 'none':
+                if clip_color and clip_color != 'none' and clip_color.lower() in CLIP_COLOR_MAP:
                     r16, g16, b16 = CLIP_COLOR_MAP[clip_color.lower()]
                     color_vals = {'_COLOR_R': r16, '_COLOR_G': g16, '_COLOR_B': b16}
                     found_keys = set()
