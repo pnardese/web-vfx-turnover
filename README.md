@@ -7,7 +7,7 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 - **Automatic VFX ID Generation** - Creates VFX IDs based on scene numbers (format: `FILM_ID_SCENE_SHOT`)
 - **Support for Existing Markers** - Recognizes LOC lines in EDL files
 - **Multiple Export Formats** - Markers, Subcaps, ALE, EDL, spreadsheet, and AAF clip notes
-- **AAF Clip Notes** - Copies source AAF and writes VFX IDs as clip notes and timeline markers; track auto-detected; output saved as `_new.aaf` (requires local Python server)
+- **AAF Clip Notes** - Copies source AAF and writes VFX IDs as clip notes and timeline markers; track auto-detected; optional clip color (32 Avid colors); output saved as `_new.aaf` (requires local Python server)
 - **Collapsible Config Panels** - Markers and AAF Clip Notes buttons expand their settings panel on click; collapsed by default for a clean interface
 - **Timecode Calculations** - Customizable FPS and handles
 - **Drag-and-Drop Interface** - Easy file upload
@@ -35,7 +35,9 @@ Click **Markers** to expand the config panel. Set user, track, color, and marker
 
 ### 3. Export AAF with Clip Notes
 
-As an alternative to markers, VFX IDs can be embedded directly as clip notes in the Avid sequence AAF. Export the sequence as AAF from Avid, then click **Export AAF with VFX IDs** to open the config panel. Drop the AAF file, set user, color, and position, then click **Export**. The video track is auto-detected from the AAF. Both clip notes and timeline markers are written; the output is saved as `<name>_new.aaf`. Requires the local Python server (see Installation).
+As an alternative to markers, VFX IDs can be embedded directly as clip notes in the Avid sequence AAF. Export the sequence as AAF from Avid, then click **Export AAF with VFX IDs** to open the config panel. Drop the AAF file, set user, marker color, marker position, and optionally a clip color, then click **Export**. The video track is auto-detected from the AAF. Both clip notes and timeline markers are written; the output is saved as `<name>_new.aaf`. Requires the local Python server (see Installation).
+
+The **Clip color** dropdown lists all 32 Avid clip colors with a color swatch and name. Selecting a color writes `_COLOR_R/G/B` tagged values on each clip in the AAF, matching the format Avid uses natively.
 
 ### 4. Export Frames
 
@@ -115,7 +117,7 @@ Removed VFX IDs are shown for reference but are excluded from all exports.
 | Export | Description |
 |--------|-------------|
 | **Markers** | AVID timeline markers — click to expand config panel (user, track V1–V8, color, position start/middle) |
-| **AAF Clip Notes** | Copies the source AAF, writes VFX IDs as clip notes and markers, track auto-detected — click to expand config panel (user, color, position); output `_new.aaf`; requires local Python server |
+| **AAF Clip Notes** | Copies the source AAF, writes VFX IDs as clip notes and markers, track auto-detected — click to expand config panel (user, marker color, position, clip color); output `_new.aaf`; requires local Python server |
 | **Subcaps** | Subtitle format for burn-ins |
 | **Pulls ALE** | Avid Log Exchange file with handles for creating pulls |
 | **Pulls EDL** | EDL for cutting in VFX pulls |
