@@ -7,7 +7,8 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 - **Automatic VFX ID Generation** - Creates VFX IDs based on scene numbers (format: `FILM_ID_SCENE_SHOT`)
 - **Support for Existing Markers** - Recognizes LOC lines in EDL files
 - **Multiple Export Formats** - Markers, Subcaps, ALE, EDL, spreadsheet, and AAF clip notes
-- **AAF Clip Notes** - Writes VFX IDs directly into Avid AAF files as clip notes (requires local Python server)
+- **AAF Clip Notes** - Copies source AAF and writes VFX IDs as clip notes and timeline markers; track auto-detected; output saved as `_new.aaf` (requires local Python server)
+- **Collapsible Config Panels** - Markers and AAF Clip Notes buttons expand their settings panel on click; collapsed by default for a clean interface
 - **Timecode Calculations** - Customizable FPS and handles
 - **Drag-and-Drop Interface** - Easy file upload
 - **Persistent Settings** - Configuration saved locally in browser
@@ -30,31 +31,35 @@ Existing markers on timeline are imported into the tool as existing VFX IDs (you
 
 ### 2. Export Markers and Subcaps
 
-Export markers and subcaps and import them into Avid to help keep track of VFXs.
+Click **Markers** to expand the config panel. Set user, track, color, and marker position (start or middle of clip), then click **Download**. Click **Subcaps** to export subtitle-format burn-ins directly.
 
-### 3. Export Frames
+### 3. Export AAF with Clip Notes
+
+As an alternative to markers, VFX IDs can be embedded directly as clip notes in the Avid sequence AAF. Export the sequence as AAF from Avid, then click **Export AAF with VFX IDs** to open the config panel. Drop the AAF file, set user, color, and position, then click **Export**. The video track is auto-detected from the AAF. Both clip notes and timeline markers are written; the output is saved as `<name>_new.aaf`. Requires the local Python server (see Installation).
+
+### 4. Export Frames
 
 Export markers from Avid as JPGs to use them to build a VFX Shots database.
 
 ![Export settings for frame extraction at marker's position](imgs/02_export_frames.png)
 
-### 4. Export TAB Text Files
+### 5. Export TAB Text Files
 
 Export TAB text files with VFX IDs info, that can be imported in any database/spreadsheet to build a VFX shot database.
 
-### 5. Export ALE Pulls
+### 6. Export ALE Pulls
 
 Export ALE Pulls to create pulls (subclips with VFX IDs as names from the master clips). After selecting master clips in bin, drag ALE file on bin. Import settings: *Merge events with known sources and automatically create subclips*
 
 ![Import settings](imgs/03_merge_events_ale.png)
 
-### 6. Export Pulls EDL
+### 7. Export Pulls EDL
 
 Export Pulls EDL to create a timeline with the pull subclips. Import the EDL into Avid bin, relink to the pull subclips using Names.
 
 ![Relink configuration](imgs/04_relink_edl_pulls_v02.png)
 
-### 7. VFX Cut-ins
+### 8. VFX Cut-ins
 
 When you receive incoming VFX (.mov files), you can import them into Avid, export the bin in TAB format to create an EDL for cutting in the VFX into the timeline. Columns: **Color**, **Name**, **Duration**, **Start**, **End**, **Tape**.
 
@@ -92,8 +97,8 @@ Removed VFX IDs are shown for reference but are excluded from all exports.
 
 | Export | Description |
 |--------|-------------|
-| **Markers** | AVID timeline markers (configurable user, position start/middle, track V1-V8, and color) |
-| **AAF Clip Notes** | Copies the source AAF and writes VFX IDs as clip notes — requires local Python server (see Installation) |
+| **Markers** | AVID timeline markers — click to expand config panel (user, track V1–V8, color, position start/middle) |
+| **AAF Clip Notes** | Copies the source AAF, writes VFX IDs as clip notes and markers, track auto-detected — click to expand config panel (user, color, position); output `_new.aaf`; requires local Python server |
 | **Subcaps** | Subtitle format for burn-ins |
 | **Pulls ALE** | Avid Log Exchange file with handles for creating pulls |
 | **Pulls EDL** | EDL for cutting in VFX pulls |

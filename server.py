@@ -56,8 +56,9 @@ def _ensure_descriptive_metadata_def(f):
 
 
 def _write_aaf_clip_notes(events, input_aaf_path, output_aaf_path,
-                           user='vfx', color='green', position='middle'):
-    """Copy an AAF and write VFX IDs as clip notes and timeline markers.
+                           user='vfx', color='green', position='middle',
+                           include_markers=True):
+    """Copy an AAF and write VFX IDs as clip notes and optionally timeline markers.
 
     Mirrors json_to_aaf() in vfx_turnover.py.
     """
@@ -152,63 +153,66 @@ def _write_aaf_clip_notes(events, input_aaf_path, output_aaf_path,
                     tv['Value'].value = vfx_id
                     attr_list.append(tv)
 
-                marker_frame = timeline_pos + length // 2 if position == 'middle' else timeline_pos
-                marker_data.append((marker_frame, vfx_id))
+                if include_markers:
+                    marker_frame = timeline_pos + length // 2 if position == 'middle' else timeline_pos
+                    marker_data.append((marker_frame, vfx_id))
 
-                print(f'  Clip {clip_num}: {clip_name} -> {vfx_id}  (marker @ frame {marker_frame})')
+                print(f'  Clip {clip_num}: {clip_name} -> {vfx_id}' + (f'  (marker @ frame {marker_frame})' if include_markers else ''))
                 timeline_pos += length
 
             if clip_num < len(events):
                 print(f'  Warning: fewer clips ({clip_num}) than events ({len(events)})')
 
-            # Find or create EventMobSlot for markers
-            event_slot = None
-            for slot in mob.slots:
-                if type(slot).__name__ == 'EventMobSlot':
-                    event_slot = slot
-                    break
+            if include_markers:
+                # Find or create EventMobSlot for markers
+                event_slot = None
+                for slot in mob.slots:
+                    if type(slot).__name__ == 'EventMobSlot':
+                        event_slot = slot
+                        break
 
-            if event_slot is None:
-                existing_ids = {s.slot_id for s in mob.slots}
-                new_slot_id = max(existing_ids) + 1 if existing_ids else 1008
-                event_slot = f.create.EventMobSlot()
-                event_slot['SlotID'].value = new_slot_id
-                event_slot['EditRate'].value = video_slot.edit_rate
-                event_slot['SlotName'].value = ''
-                seq = f.create.Sequence(media_kind='DescriptiveMetadata')
-                seq['Components'].value = []
-                event_slot['Segment'].value = seq
-                mob.slots.append(event_slot)
-            else:
-                seq = event_slot.segment
+                if event_slot is None:
+                    existing_ids = {s.slot_id for s in mob.slots}
+                    new_slot_id = max(existing_ids) + 1 if existing_ids else 1008
+                    event_slot = f.create.EventMobSlot()
+                    event_slot['SlotID'].value = new_slot_id
+                    event_slot['EditRate'].value = video_slot.edit_rate
+                    event_slot['SlotName'].value = ''
+                    seq = f.create.Sequence(media_kind='DescriptiveMetadata')
+                    seq['Components'].value = []
+                    event_slot['Segment'].value = seq
+                    mob.slots.append(event_slot)
+                else:
+                    seq = event_slot.segment
 
-            new_markers = []
-            for marker_frame, vfx_id in marker_data:
-                marker = f.create.DescriptiveMarker()
-                marker['Length'].value = 1
-                marker['Position'].value = marker_frame
-                marker['Comment'].value = vfx_id
-                marker['CommentMarkerUSer'].value = user
-                marker['CommentMarkerColor'].value = color_rgb
-                marker['DescribedSlots'].value = {video_slot_id}
-                tv_list = [
-                    f.create.TaggedValue('_ATN_CRM_COLOR',            color_str),
-                    f.create.TaggedValue('_ATN_CRM_COLOR_EXTENDED',   color_str),
-                    f.create.TaggedValue('_ATN_CRM_USER',             user),
-                    f.create.TaggedValue('_ATN_CRM_COM',              vfx_id),
-                    f.create.TaggedValue('_ATN_CRM_LONG_CREATE_DATE', now_ts),
-                    f.create.TaggedValue('_ATN_CRM_LONG_MOD_DATE',    now_ts),
-                    f.create.TaggedValue('_ATN_CRM_LENGTH',           1),
-                    f.create.TaggedValue('_ATN_CRM_ID',               uuid.uuid4().hex),
-                ]
-                marker['CommentMarkerAttributeList'].value = tv_list
-                new_markers.append(marker)
+                new_markers = []
+                for marker_frame, vfx_id in marker_data:
+                    marker = f.create.DescriptiveMarker()
+                    marker['Length'].value = 1
+                    marker['Position'].value = marker_frame
+                    marker['Comment'].value = vfx_id
+                    marker['CommentMarkerUSer'].value = user
+                    marker['CommentMarkerColor'].value = color_rgb
+                    marker['DescribedSlots'].value = {video_slot_id}
+                    tv_list = [
+                        f.create.TaggedValue('_ATN_CRM_COLOR',            color_str),
+                        f.create.TaggedValue('_ATN_CRM_COLOR_EXTENDED',   color_str),
+                        f.create.TaggedValue('_ATN_CRM_USER',             user),
+                        f.create.TaggedValue('_ATN_CRM_COM',              vfx_id),
+                        f.create.TaggedValue('_ATN_CRM_LONG_CREATE_DATE', now_ts),
+                        f.create.TaggedValue('_ATN_CRM_LONG_MOD_DATE',    now_ts),
+                        f.create.TaggedValue('_ATN_CRM_LENGTH',           1),
+                        f.create.TaggedValue('_ATN_CRM_ID',               uuid.uuid4().hex),
+                    ]
+                    marker['CommentMarkerAttributeList'].value = tv_list
+                    new_markers.append(marker)
 
-            seq['Components'].value = new_markers
+                seq['Components'].value = new_markers
 
         f.save()
 
-    print(f'Added {clip_num} VFX ID clip notes and {len(marker_data)} markers')
+    marker_msg = f'and {len(marker_data)} markers' if include_markers else '(no markers)'
+    print(f'Added {clip_num} VFX ID clip notes {marker_msg}')
     return clip_num
 
 
@@ -229,6 +233,7 @@ def export_aaf():
     if not events:
         return jsonify({'error': 'Events list is empty'}), 400
 
+    include_markers = request.form.get('include_markers', 'true').lower() == 'true'
     user     = request.form.get('user',     'vfx')
     color    = request.form.get('color',    'green')
     position = request.form.get('position', 'middle')
@@ -243,7 +248,7 @@ def export_aaf():
 
     try:
         aaf_file.save(input_path)
-        clip_count = _write_aaf_clip_notes(events, input_path, output_path, user, color, position)
+        clip_count = _write_aaf_clip_notes(events, input_path, output_path, user, color, position, include_markers)
         print(f'Serving {download_name} ({clip_count} clips annotated)')
 
         @after_this_request
