@@ -47,6 +47,23 @@ Export markers from Avid as JPGs to use them to build a VFX Shots database.
 
 Export TAB text files with VFX IDs info, that can be imported in any database/spreadsheet to build a VFX shot database.
 
+The exported file contains one row per shot with the following columns:
+
+| Column | Description |
+|--------|-------------|
+| `#` | Shot counter |
+| `Name` | VFX ID |
+| `Frame` | *(empty — for thumbnail reference)* |
+| `Comments` | *(empty)* |
+| `Status` | *(empty)* |
+| `Date` | *(empty)* |
+| `Duration` | Source clip duration as timecode |
+| `Start` | Source start timecode |
+| `End` | Source end timecode |
+| `Frame Count Duration` | Duration in frames |
+| `Handles` | Handle frames configured for the project |
+| `Tape` | Source reel / tape name |
+
 ### 6. Export ALE Pulls
 
 Export ALE Pulls to create pulls (subclips with VFX IDs as names from the master clips). After selecting master clips in bin, drag ALE file on bin. Import settings: *Merge events with known sources and automatically create subclips*
