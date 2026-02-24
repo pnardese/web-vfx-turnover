@@ -15,7 +15,22 @@
 <body style="font-family: 'Source Code Pro', monospace; font-weight: 500; font-size: 20px;">
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
+
+        const CLIP_COLOR_HEX = {
+            'dark blue': '#392e95', 'steel blue': '#3b6394', 'dark green': '#428036',
+            'cyan': '#42d4f4', 'teal': '#469990', 'blue': '#5846e5',
+            'dark grey': '#595959', 'sky blue': '#5a98e3', 'green': '#65c553',
+            'dark purple': '#7e3169', 'dark brown': '#7e5235', 'olive': '#7e8038',
+            'dark red': '#802424', 'purple': '#8f00b3', 'mint': '#aaffc3',
+            'crimson': '#bf0066', 'sand': '#bfa98f', 'light grey': '#bfbfbf',
+            'violet': '#c14ba1', 'yellow-olive': '#c1c456', 'brown': '#c27e52',
+            'medium red': '#c83939', 'beige': '#dbd8b8', 'light red': '#de6474',
+            'gold': '#e4c600', 'lavender': '#e6beff', 'magenta': '#f032e6',
+            'yellow-green': '#f2ff40', 'orange': '#f58231', 'pink': '#fabebe',
+            'rose': '#ff0073', 'light orange': '#ffc480',
+        };
+        const CLIP_COLORS = ['none', ...Object.keys(CLIP_COLOR_HEX)];
 
         const VFXTurnoverApp = () => {
             const [currentPage, setCurrentPage] = useState('main');
@@ -40,6 +55,9 @@
             const [markersOpen, setMarkersOpen] = useState(false);
             const [aafOpen, setAafOpen] = useState(false);
             const [aafIncludeMarkers, setAafIncludeMarkers] = useState(true);
+            const [aafClipColor, setAafClipColor] = useState(() => localStorage.getItem('vfx_aafClipColor') || 'none');
+            const [aafClipColorOpen, setAafClipColorOpen] = useState(false);
+            const clipColorRef = useRef(null);
 
             useEffect(() => { localStorage.setItem('vfx_filmId', filmId); }, [filmId]);
             useEffect(() => { localStorage.setItem('vfx_fps', fps); }, [fps]);
@@ -49,6 +67,13 @@
             useEffect(() => { localStorage.setItem('vfx_markerColor', markerColor); }, [markerColor]);
             useEffect(() => { localStorage.setItem('vfx_markerPosition', markerPosition); }, [markerPosition]);
             useEffect(() => { if (edlData) localStorage.setItem('vfx_edlData', JSON.stringify(edlData)); else localStorage.removeItem('vfx_edlData'); }, [edlData]);
+            useEffect(() => { localStorage.setItem('vfx_aafClipColor', aafClipColor); }, [aafClipColor]);
+            useEffect(() => {
+                if (!aafClipColorOpen) return;
+                const handler = (e) => { if (clipColorRef.current && !clipColorRef.current.contains(e.target)) setAafClipColorOpen(false); };
+                document.addEventListener('mousedown', handler);
+                return () => document.removeEventListener('mousedown', handler);
+            }, [aafClipColorOpen]);
             useEffect(() => { localStorage.setItem('vfx_edlFilePath', edlFilePath); }, [edlFilePath]);
             useEffect(() => { if (binData) localStorage.setItem('vfx_binData', JSON.stringify(binData)); else localStorage.removeItem('vfx_binData'); }, [binData]);
             useEffect(() => { localStorage.setItem('vfx_binFilePath', binFilePath); }, [binFilePath]);
@@ -223,6 +248,7 @@
                 formData.append('aaf_file', aafFile);
                 formData.append('events', JSON.stringify(getActiveEvents()));
                 formData.append('include_markers', aafIncludeMarkers ? 'true' : 'false');
+                formData.append('clip_color', aafClipColor);
                 if (aafIncludeMarkers) {
                     formData.append('user', markerUser);
                     formData.append('color', markerColor);
@@ -521,6 +547,24 @@
                                                                 <p className="col-span-2 text-xs text-gray-500">Track auto-detected from AAF</p>
                                                             </div>
                                                         )}
+                                                        <div ref={clipColorRef} className="relative">
+                                                            <label className="block text-xs text-gray-500 mb-1">Clip color</label>
+                                                            <button onClick={() => setAafClipColorOpen(o => !o)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] hover:border-[#14b8a6]/50 rounded-lg text-sm text-white focus:outline-none flex items-center gap-2">
+                                                                <span className="w-4 h-4 rounded-sm flex-shrink-0 border border-[#3a4555]" style={{ backgroundColor: CLIP_COLOR_HEX[aafClipColor] || 'transparent' }} />
+                                                                <span className="flex-1 text-left">{aafClipColor === 'none' ? 'None' : aafClipColor.replace(/\b\w/g, c => c.toUpperCase())}</span>
+                                                                <span className="text-gray-500 text-xs">{aafClipColorOpen ? '▲' : '▼'}</span>
+                                                            </button>
+                                                            {aafClipColorOpen && (
+                                                                <div className="absolute z-20 w-full mt-1 bg-[#0f1923] border border-[#2a3545] rounded-lg shadow-xl max-h-56 overflow-y-auto">
+                                                                    {CLIP_COLORS.map(name => (
+                                                                        <button key={name} onClick={() => { setAafClipColor(name); setAafClipColorOpen(false); }} className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-[#1a2530] text-sm transition text-left ${aafClipColor === name ? 'text-[#14b8a6]' : 'text-white'}`}>
+                                                                            <span className="w-4 h-4 rounded-sm flex-shrink-0 border border-[#3a4555]" style={{ backgroundColor: CLIP_COLOR_HEX[name] || 'transparent' }} />
+                                                                            <span>{name === 'none' ? 'None' : name.replace(/\b\w/g, c => c.toUpperCase())}</span>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                         <button onClick={exportAAF} disabled={!aafFile} className="w-full px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Export</button>
                                                     </div>
                                                 )}

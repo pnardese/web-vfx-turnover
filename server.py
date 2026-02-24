@@ -32,6 +32,43 @@ MARKER_COLOR_MAP = {
     'white':   ('White',   {'red': 65535, 'green': 65535, 'blue': 65535}),
 }
 
+# Maps Avid clip color name → (r16, g16, b16) for _COLOR_R/G/B TaggedValues.
+# Values are 8-bit × 256. Extracted from VFX_48.Colore.aaf reference file.
+CLIP_COLOR_MAP = {
+    'dark blue':     (14592, 11776, 38144),
+    'steel blue':    (15104, 25344, 37888),
+    'dark green':    (16896, 32768, 13824),
+    'cyan':          (16896, 54272, 62464),
+    'teal':          (17920, 39168, 36864),
+    'blue':          (22528, 17920, 58624),
+    'dark grey':     (22784, 22784, 22784),
+    'sky blue':      (23040, 38912, 58112),
+    'green':         (25856, 50432, 21248),
+    'dark purple':   (32256, 12544, 26880),
+    'dark brown':    (32256, 20992, 13568),
+    'olive':         (32256, 32768, 14336),
+    'dark red':      (32768,  9216,  9216),
+    'purple':        (36608,     0, 45824),
+    'mint':          (43520, 65280, 49920),
+    'crimson':       (48896,     0, 26112),
+    'sand':          (48896, 43264, 36608),
+    'light grey':    (48896, 48896, 48896),
+    'violet':        (49408, 19200, 41216),
+    'yellow-olive':  (49408, 50176, 22016),
+    'brown':         (49664, 32256, 20992),
+    'medium red':    (51200, 14592, 14592),
+    'beige':         (56064, 55296, 47104),
+    'light red':     (56832, 25600, 29696),
+    'gold':          (58368, 50688,     0),
+    'lavender':      (58880, 48640, 65280),
+    'magenta':       (61440, 12800, 58880),
+    'yellow-green':  (61952, 65280, 16384),
+    'orange':        (62720, 33280, 12544),
+    'pink':          (64000, 48640, 48640),
+    'rose':          (65280,     0, 29440),
+    'light orange':  (65280, 50176, 32768),
+}
+
 
 @app.route('/health')
 def health():
@@ -57,7 +94,7 @@ def _ensure_descriptive_metadata_def(f):
 
 def _write_aaf_clip_notes(events, input_aaf_path, output_aaf_path,
                            user='vfx', color='green', position='middle',
-                           include_markers=True):
+                           include_markers=True, clip_color='none'):
     """Copy an AAF and write VFX IDs as clip notes and optionally timeline markers.
 
     Mirrors json_to_aaf() in vfx_turnover.py.
@@ -153,6 +190,22 @@ def _write_aaf_clip_notes(events, input_aaf_path, output_aaf_path,
                     tv['Value'].value = vfx_id
                     attr_list.append(tv)
 
+                # Write clip color
+                if clip_color != 'none':
+                    r16, g16, b16 = CLIP_COLOR_MAP[clip_color.lower()]
+                    color_vals = {'_COLOR_R': r16, '_COLOR_G': g16, '_COLOR_B': b16}
+                    found_keys = set()
+                    for attr in attr_list:
+                        if attr.name in color_vals:
+                            attr.value = color_vals[attr.name]
+                            found_keys.add(attr.name)
+                    for name, val in color_vals.items():
+                        if name not in found_keys:
+                            tv = f.create.TaggedValue()
+                            tv['Name'].value = name
+                            tv['Value'].value = val
+                            attr_list.append(tv)
+
                 if include_markers:
                     marker_frame = timeline_pos + length // 2 if position == 'middle' else timeline_pos
                     marker_data.append((marker_frame, vfx_id))
@@ -234,9 +287,10 @@ def export_aaf():
         return jsonify({'error': 'Events list is empty'}), 400
 
     include_markers = request.form.get('include_markers', 'true').lower() == 'true'
-    user     = request.form.get('user',     'vfx')
-    color    = request.form.get('color',    'green')
-    position = request.form.get('position', 'middle')
+    user        = request.form.get('user',        'vfx')
+    color       = request.form.get('color',       'green')
+    position    = request.form.get('position',    'middle')
+    clip_color  = request.form.get('clip_color',  'none')
 
     original_filename = aaf_file.filename or 'output.aaf'
     stem = os.path.splitext(original_filename)[0]
@@ -248,7 +302,7 @@ def export_aaf():
 
     try:
         aaf_file.save(input_path)
-        clip_count = _write_aaf_clip_notes(events, input_path, output_path, user, color, position, include_markers)
+        clip_count = _write_aaf_clip_notes(events, input_path, output_path, user, color, position, include_markers, clip_color)
         print(f'Serving {download_name} ({clip_count} clips annotated)')
 
         @after_this_request
