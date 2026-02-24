@@ -240,10 +240,10 @@
             const exportGoogleTab = () => {
                 if (!edlData) return;
                 const fr = parseInt(fps), bn = edlData.edl_metadata.edl_filename || 'output';
-                let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tTape\n';
+                let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
                 getActiveEvents().forEach((e, i) => {
                     const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
-                    content += `${i+1}\t${e['VFX ID']}\t\t\t\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${e.reel}\n`;
+                    content += `${i+1}\t${e['VFX ID']}\t\t\t\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
                 });
                 downloadFile(content, `${bn}_TAB.txt`);
             };
