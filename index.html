@@ -283,7 +283,7 @@
                             {currentPage === 'main' && (
                                 <>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                        {[['Film ID', filmId, setFilmId, 'text'], ['FPS', fps, setFps, 'text'], ['Handles', handles, setHandles, 'number']].map(([label, val, setter, type]) => (
+                                        {[['Film ID', filmId, setFilmId, 'text'], ['FPS', fps, setFps, 'text'], ['Pull Handles', handles, setHandles, 'number']].map(([label, val, setter, type]) => (
                                             <div key={label}>
                                                 <label className="block text-xs font-medium text-[#14b8a6] mb-1 uppercase">{label}</label>
                                                 <input type={type} value={val} onChange={(e) => setter(type === 'number' ? parseInt(e.target.value) : e.target.value)} className="w-full px-3 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
