@@ -55,7 +55,7 @@ The exported file contains one row per shot with the following columns:
 | `Start` | Source start timecode |
 | `End` | Source end timecode |
 | `Frame Count Duration` | Duration in frames |
-| `Handles` | Handle frames configured for the project |
+| `Pull Handles` | Handle frames configured for the project |
 | `Tape` | Source reel / tape name |
 
 ### 5. Export ALE Pulls
@@ -82,13 +82,13 @@ When you receive incoming VFX (.mov files), you can import them into Avid, expor
 |---------|-------------|---------|
 | Film ID | Project identifier used in VFX IDs | FILM_ID |
 | FPS | Frame rate for timecode calculations | 24 |
-| Handles | Extra frames added to pulls | 10 |
+| Pull Handles | Extra frames added to pulls | 10 |
 
 ## Data Persistence
 
 All settings and loaded file data are automatically saved to your browser's local storage:
 
-- **Settings** - Film ID, FPS, Handles, Marker User, Position, Track, and Color
+- **Settings** - Film ID, FPS, Pull Handles, Marker User, Position, Track, and Color
 - **Loaded Files** - EDL and AVID Bin file data persist across browser sessions
 - **File Names** - The names of loaded files are displayed in the upload zones and preview sections
 
