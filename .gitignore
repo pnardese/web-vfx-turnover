@@ -20,3 +20,4 @@ venv/
 # Project specific
 test/
 docs/
+CLAUDE.md
