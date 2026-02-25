@@ -168,7 +168,19 @@
                                 e.changeStatus = 'new';
                                 newCount++;
                             } else {
-                                e.changeStatus = 'unchanged';
+                                const cachedEvent = cachedEdl.events.find(ce => ce['VFX ID'] === e['VFX ID'] && ce.changeStatus !== 'removed');
+                                if (cachedEvent && (e.source_start_TC !== cachedEvent.source_start_TC || e.source_end_TC !== cachedEvent.source_end_TC)) {
+                                    const fr = parseInt(fps);
+                                    const newIn = parseTimecode(e.source_start_TC, fr);
+                                    const newOut = parseTimecode(e.source_end_TC, fr);
+                                    const oldIn = parseTimecode(cachedEvent.source_start_TC, fr);
+                                    const oldOut = parseTimecode(cachedEvent.source_end_TC, fr);
+                                    e.changeStatus = (newIn >= oldIn - handles && newOut <= oldOut + handles) ? 'trimmed_ok' : 'trimmed_pull';
+                                    e.prevSourceIn = cachedEvent.source_start_TC;
+                                    e.prevSourceOut = cachedEvent.source_end_TC;
+                                } else {
+                                    e.changeStatus = 'unchanged';
+                                }
                             }
                         });
 
@@ -183,9 +195,13 @@
 
                     setEdlData(parsed);
                     setEdlFilePath(file.name);
+                    const trimmedOkCount = parsed.events.filter(e => e.changeStatus === 'trimmed_ok').length;
+                    const trimmedPullCount = parsed.events.filter(e => e.changeStatus === 'trimmed_pull').length;
                     const statusParts = [`EDL loaded: ${parsed.events.filter(e => e.changeStatus !== 'removed').length} events`];
                     if (newCount > 0) statusParts.push(`${newCount} new`);
                     if (removedCount > 0) statusParts.push(`${removedCount} removed`);
+                    if (trimmedOkCount > 0) statusParts.push(`${trimmedOkCount} changed (no pull)`);
+                    if (trimmedPullCount > 0) statusParts.push(`${trimmedPullCount} need pull`);
                     setStatus(statusParts.join(', '));
                 };
                 reader.readAsText(file);
@@ -344,6 +360,18 @@
                 downloadFile(content, `${bn}_TAB.txt`);
             };
 
+            const exportChangelist = () => {
+                if (!edlData) return;
+                const fr = parseInt(fps), bn = edlData.edl_metadata.edl_filename || 'output';
+                const statusLabel = { new: 'NEW', removed: 'REMOVED', trimmed_ok: 'CHANGED - NO PULL NEEDED', trimmed_pull: 'NEED PULL', unchanged: '' };
+                let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
+                edlData.events.forEach((e, i) => {
+                    const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
+                    content += `${i+1}\t${e['VFX ID']}\t\t\t${statusLabel[e.changeStatus] || ''}\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
+                });
+                downloadFile(content, `${bn}_changelist.txt`);
+            };
+
             const exportFinalVFXEDL = () => {
                 if (!edlData || !binData) { setStatus('Error: Please upload both EDL and AVID Bin files'); return; }
                 const bn = edlData.edl_metadata.edl_filename || 'output';
@@ -412,25 +440,36 @@
 
                                     {edlData && (
                                         <div className="bg-[#0a0f14] border border-[#1a2530] rounded-xl p-4 mb-6">
-                                            <h3 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Preview</h3>
+                                            <div className="flex justify-between items-center mb-3">
+                                                <h3 className="text-xs font-medium text-[#14b8a6] uppercase">Preview</h3>
+                                                <button onClick={exportChangelist} className="px-3 py-1 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium rounded-lg text-xs transition">Export Changelist</button>
+                                            </div>
                                             <div className="text-sm text-gray-300 space-y-1 mb-4">
                                                 <p><span className="font-medium text-white">File:</span> {edlFilePath || `${edlData.edl_metadata.edl_filename}.edl`}</p>
                                                 <p>
                                                     <span className="font-medium text-white">Events:</span> {edlData.events.filter(e => e.changeStatus !== 'removed').length}
                                                     {edlData.events.some(e => e.changeStatus === 'new') && <span className="ml-2 text-green-400">+{edlData.events.filter(e => e.changeStatus === 'new').length} new</span>}
                                                     {edlData.events.some(e => e.changeStatus === 'removed') && <span className="ml-2 text-red-400">-{edlData.events.filter(e => e.changeStatus === 'removed').length} removed</span>}
+                                                    {edlData.events.some(e => e.changeStatus === 'trimmed_ok') && <span className="ml-2 text-yellow-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_ok').length} changed (no pull)</span>}
+                                                    {edlData.events.some(e => e.changeStatus === 'trimmed_pull') && <span className="ml-2 text-orange-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_pull').length} need pull</span>}
                                                 </p>
                                             </div>
                                             <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
                                                 <table className="w-full text-xs">
                                                     <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0">
-                                                        <tr>{['#', 'VFX ID', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
+                                                        <tr>{['#', 'VFX ID', 'Status', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
                                                     </thead>
                                                     <tbody className="text-gray-300">
                                                         {edlData.events.map((e, i) => (
-                                                            <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : ''}`}>
+                                                            <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : ''}`}>
                                                                 <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID']}</td>
+                                                                <td className="px-3 py-2 text-xs whitespace-nowrap">
+                                                                    {e.changeStatus === 'new' && <span className="text-green-400 font-medium">NEW</span>}
+                                                                    {e.changeStatus === 'removed' && <span className="text-red-400 font-medium">REMOVED</span>}
+                                                                    {e.changeStatus === 'trimmed_ok' && <span className="text-yellow-400 font-medium">changed but no need to pull</span>}
+                                                                    {e.changeStatus === 'trimmed_pull' && <span className="text-orange-400 font-medium">need to pull</span>}
+                                                                </td>
                                                                 <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.reel}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_start_TC}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_end_TC}</td>
@@ -656,7 +695,8 @@
                                         <li>Marker options (user, track, color, position) shared across Markers and AAF exports</li>
                                         <li>Persistent settings and file data across browser sessions</li>
                                         <li>Clear buttons to easily remove loaded files</li>
-                                        <li>Change tracking — new VFX IDs highlighted in green, removed ones in red</li>
+                                        <li>Change tracking — new VFX IDs highlighted in green, removed ones in red, trimmed clips flagged by handle coverage (yellow / orange)</li>
+                                        <li>Changelist export — tab-delimited file with Status column for import into spreadsheets or databases</li>
                                     </ul>
                                     <h3 className="text-base font-semibold text-[#14b8a6] mt-6">VFX ID Format</h3>
                                     <p>Format: <code className="bg-[#1a2530] px-2 py-1 rounded text-[#14b8a6]">FILM_ID_SCENE_SHOT</code> (e.g., FILM_ID_001_010)</p>
@@ -701,6 +741,18 @@
                                         <p className="mb-3">As an alternative to markers, VFX IDs can be embedded directly as clip notes in the Avid sequence AAF, with timeline markers added on the same track.</p>
                                         <p className="mb-3">Export the sequence as AAF from Avid, then click <strong className="text-white">Export AAF with VFX IDs</strong> to open the config panel. Drop the <code className="bg-[#1a2530] px-1 rounded">.aaf</code> file into the drop zone, configure <strong className="text-white">User</strong>, <strong className="text-white">Color</strong>, and <strong className="text-white">Position</strong>, then click <strong className="text-white">Export</strong>. The video track is auto-detected from the AAF. The output file is saved as <code className="bg-[#1a2530] px-1 rounded">name_new.aaf</code>.</p>
                                         <p className="mb-3">This export requires the local Python server to be running. Start it with <code className="bg-[#1a2530] px-1 rounded">./launch.sh</code> — the server status badge in the section header indicates whether it is reachable.</p>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">4. Changelist</h3>
+                                        <p className="mb-3">When a new EDL is loaded over a previously cached one, the tool automatically compares the two versions and flags each clip in the Preview table:</p>
+                                        <ul className="list-disc pl-5 space-y-1 mb-3">
+                                            <li><strong className="text-white">Green — NEW</strong>: VFX ID not present in the previous EDL.</li>
+                                            <li><strong className="text-white">Red — REMOVED</strong>: VFX ID present in the previous EDL but missing in the new one. Shown for reference; excluded from all exports.</li>
+                                            <li><strong className="text-yellow-400">Yellow — changed but no need to pull</strong>: Source timecodes changed, but the new in/out points fall within the existing pull range (<code className="bg-[#1a2530] px-1 rounded">old Source In − handles</code> → <code className="bg-[#1a2530] px-1 rounded">old Source Out + handles</code>). The material is already covered by the previous pull.</li>
+                                            <li><strong className="text-orange-400">Orange — need to pull</strong>: Source timecodes changed and the new in/out points exceed the existing pull range. A new pull is required.</li>
+                                        </ul>
+                                        <p>The <strong className="text-white">Export Changelist</strong> button (top-right of the Preview panel) downloads a tab-delimited <code className="bg-[#1a2530] px-1 rounded">_changelist.txt</code> file with a <strong className="text-white">Status</strong> column set to <code className="bg-[#1a2530] px-1 rounded">NEW</code>, <code className="bg-[#1a2530] px-1 rounded">REMOVED</code>, <code className="bg-[#1a2530] px-1 rounded">CHANGED - NO PULL NEEDED</code>, or <code className="bg-[#1a2530] px-1 rounded">NEED PULL</code>. All events are included and the file can be imported into any spreadsheet or database.</p>
                                     </div>
 
                                     <div>
