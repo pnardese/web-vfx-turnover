@@ -465,7 +465,7 @@
                                                                 <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID']}</td>
                                                                 <td className="px-3 py-2 text-xs">
-                                                                    {e.changeStatus === 'new' && <><span className="text-green-400 font-medium">NEW</span><br/><span className="text-orange-400 font-medium">NEED TO PULL</span></>}
+                                                                    {e.changeStatus === 'new' && <span className="text-green-400 font-medium">NEW - NEED TO PULL</span>}
                                                                     {e.changeStatus === 'removed' && <span className="text-red-400 font-medium">REMOVED</span>}
                                                                     {e.changeStatus === 'trimmed_ok' && <span className="text-yellow-400 font-medium">TRIMMED BUT NO NEED TO PULL</span>}
                                                                     {e.changeStatus === 'trimmed_pull' && <span className="text-orange-400 font-medium">TRIMMED - NEED TO PULL</span>}
