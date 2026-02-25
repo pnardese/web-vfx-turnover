@@ -402,11 +402,11 @@
                                                             <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : ''}`}>
                                                                 <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID']}</td>
-                                                                <td className="px-3 py-2 text-xs whitespace-nowrap">
-                                                                    {e.changeStatus === 'new' && <span className="text-green-400 font-medium">NEW</span>}
+                                                                <td className="px-3 py-2 text-xs">
+                                                                    {e.changeStatus === 'new' && <><span className="text-green-400 font-medium">NEW</span><br/><span className="text-orange-400 font-medium">NEED TO PULL</span></>}
                                                                     {e.changeStatus === 'removed' && <span className="text-red-400 font-medium">REMOVED</span>}
-                                                                    {e.changeStatus === 'trimmed_ok' && <span className="text-yellow-400 font-medium">changed but no need to pull</span>}
-                                                                    {e.changeStatus === 'trimmed_pull' && <span className="text-orange-400 font-medium">need to pull</span>}
+                                                                    {e.changeStatus === 'trimmed_ok' && <span className="text-yellow-400 font-medium">CHANGED BUT NO NEED TO PULL</span>}
+                                                                    {e.changeStatus === 'trimmed_pull' && <span className="text-orange-400 font-medium">NEED TO PULL</span>}
                                                                 </td>
                                                                 <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.reel}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_start_TC}</td>
