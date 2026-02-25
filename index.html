@@ -370,7 +370,7 @@
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                            {[['Subcaps', exportSubcaps], ['Pulls ALE', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['Google Tab', exportGoogleTab]].map(([name, fn]) => (
+                                            {[['Subcaps', exportSubcaps], ['Pulls ALE', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['DB Export', exportGoogleTab]].map(([name, fn]) => (
                                                 <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">{name}</button>
                                             ))}
                                         </div>
@@ -541,7 +541,7 @@
                                             <li><strong className="text-yellow-400">Yellow — changed but no need to pull</strong>: Source timecodes changed, but the new in/out points fall within the existing pull range (<code className="bg-[#1a2530] px-1 rounded">old Source In − handles</code> → <code className="bg-[#1a2530] px-1 rounded">old Source Out + handles</code>). The material is already covered by the previous pull.</li>
                                             <li><strong className="text-orange-400">Orange — need to pull</strong>: Source timecodes changed and the new in/out points exceed the existing pull range. A new pull is required.</li>
                                         </ul>
-                                        <p>The <strong className="text-white">Export Changelist</strong> button (top-right of the Preview panel) downloads a tab-delimited <code className="bg-[#1a2530] px-1 rounded">_changelist.txt</code> file. It uses the same column structure as the Google Tab export, with the <strong className="text-white">Status</strong> column set to <code className="bg-[#1a2530] px-1 rounded">NEW</code>, <code className="bg-[#1a2530] px-1 rounded">REMOVED</code>, <code className="bg-[#1a2530] px-1 rounded">CHANGED - NO PULL NEEDED</code>, or <code className="bg-[#1a2530] px-1 rounded">NEED PULL</code>. All events are included so the full changelist can be imported into any spreadsheet or database.</p>
+                                        <p>The <strong className="text-white">Export Changelist</strong> button (top-right of the Preview panel) downloads a tab-delimited <code className="bg-[#1a2530] px-1 rounded">_changelist.txt</code> file. It uses the same column structure as the DB Export, with the <strong className="text-white">Status</strong> column set to <code className="bg-[#1a2530] px-1 rounded">NEW</code>, <code className="bg-[#1a2530] px-1 rounded">REMOVED</code>, <code className="bg-[#1a2530] px-1 rounded">CHANGED - NO PULL NEEDED</code>, or <code className="bg-[#1a2530] px-1 rounded">NEED PULL</code>. All events are included so the full changelist can be imported into any spreadsheet or database.</p>
                                     </div>
 
                                     <div>

@@ -107,7 +107,7 @@ When loading a new EDL file, the tool compares it with the previously cached ver
 
 Removed VFX IDs are shown for reference but are excluded from all exports.
 
-The **Export Changelist** button (top-right of the Preview panel) downloads a tab-delimited `.txt` file with one row per event and a `Status` column populated with `NEW`, `REMOVED`, `CHANGED - NO PULL NEEDED`, or `NEED PULL`. The file uses the same column structure as the Google Tab export and can be imported directly into any spreadsheet or database.
+The **Export Changelist** button (top-right of the Preview panel) downloads a tab-delimited `.txt` file with one row per event and a `Status` column populated with `NEW`, `REMOVED`, `CHANGED - NO PULL NEEDED`, or `NEED PULL`. The file uses the same column structure as the DB Export and can be imported directly into any spreadsheet or database.
 
 ## Export Options
 
@@ -117,7 +117,7 @@ The **Export Changelist** button (top-right of the Preview panel) downloads a ta
 | **Subcaps** | Subtitle format for burn-ins |
 | **ALE Pulls** | Avid Log Exchange file with handles for creating pulls |
 | **Pulls EDL** | EDL for cutting in VFX pulls |
-| **Google Tab** | Tab-delimited file for spreadsheet import |
+| **DB Export** | Tab-delimited file for spreadsheet / database import |
 | **Export Changelist** | Tab-delimited changelist with Status column; includes all events (new, removed, trimmed, unchanged) |
 
 ## Supported File Formats
