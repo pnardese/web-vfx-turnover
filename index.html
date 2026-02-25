@@ -409,8 +409,8 @@
                                                                     {e.changeStatus === 'trimmed_pull' && <span className="text-orange-400 font-medium">TRIMMED - NEED TO PULL</span>}
                                                                 </td>
                                                                 <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.reel}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_start_TC}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_end_TC}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_start_TC !== e.prevSourceIn ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_start_TC !== e.prevSourceIn ? 'text-yellow-400' : ''}`}>{e.source_start_TC}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_end_TC !== e.prevSourceOut ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_end_TC !== e.prevSourceOut ? 'text-yellow-400' : ''}`}>{e.source_end_TC}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_start_TC}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_end_TC}</td>
                                                             </tr>
