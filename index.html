@@ -130,7 +130,19 @@
                                 e.changeStatus = 'new';
                                 newCount++;
                             } else {
-                                e.changeStatus = 'unchanged';
+                                const cachedEvent = cachedEdl.events.find(ce => ce['VFX ID'] === e['VFX ID'] && ce.changeStatus !== 'removed');
+                                if (cachedEvent && (e.source_start_TC !== cachedEvent.source_start_TC || e.source_end_TC !== cachedEvent.source_end_TC)) {
+                                    const fr = parseInt(fps);
+                                    const newIn = parseTimecode(e.source_start_TC, fr);
+                                    const newOut = parseTimecode(e.source_end_TC, fr);
+                                    const oldIn = parseTimecode(cachedEvent.source_start_TC, fr);
+                                    const oldOut = parseTimecode(cachedEvent.source_end_TC, fr);
+                                    e.changeStatus = (newIn >= oldIn - handles && newOut <= oldOut + handles) ? 'trimmed_ok' : 'trimmed_pull';
+                                    e.prevSourceIn = cachedEvent.source_start_TC;
+                                    e.prevSourceOut = cachedEvent.source_end_TC;
+                                } else {
+                                    e.changeStatus = 'unchanged';
+                                }
                             }
                         });
 
@@ -145,9 +157,13 @@
 
                     setEdlData(parsed);
                     setEdlFilePath(file.name);
+                    const trimmedOkCount = parsed.events.filter(e => e.changeStatus === 'trimmed_ok').length;
+                    const trimmedPullCount = parsed.events.filter(e => e.changeStatus === 'trimmed_pull').length;
                     const statusParts = [`EDL loaded: ${parsed.events.filter(e => e.changeStatus !== 'removed').length} events`];
                     if (newCount > 0) statusParts.push(`${newCount} new`);
                     if (removedCount > 0) statusParts.push(`${removedCount} removed`);
+                    if (trimmedOkCount > 0) statusParts.push(`${trimmedOkCount} changed (no pull)`);
+                    if (trimmedPullCount > 0) statusParts.push(`${trimmedPullCount} need pull`);
                     setStatus(statusParts.join(', '));
                 };
                 reader.readAsText(file);
@@ -246,6 +262,18 @@
                     content += `${i+1}\t${e['VFX ID']}\t\t\t\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
                 });
                 downloadFile(content, `${bn}_TAB.txt`);
+            };
+
+            const exportChangelist = () => {
+                if (!edlData) return;
+                const fr = parseInt(fps), bn = edlData.edl_metadata.edl_filename || 'output';
+                const statusLabel = { new: 'NEW', removed: 'REMOVED', trimmed_ok: 'CHANGED - NO PULL NEEDED', trimmed_pull: 'NEED PULL', unchanged: '' };
+                let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
+                edlData.events.forEach((e, i) => {
+                    const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
+                    content += `${i+1}\t${e['VFX ID']}\t\t\t${statusLabel[e.changeStatus] || ''}\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
+                });
+                downloadFile(content, `${bn}_changelist.txt`);
             };
 
             const exportFinalVFXEDL = () => {
@@ -350,25 +378,36 @@
 
                                     {edlData && (
                                         <div className="bg-[#0a0f14] border border-[#1a2530] rounded-xl p-4 mb-6">
-                                            <h3 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Preview</h3>
+                                            <div className="flex justify-between items-center mb-3">
+                                                <h3 className="text-xs font-medium text-[#14b8a6] uppercase">Preview</h3>
+                                                <button onClick={exportChangelist} className="px-3 py-1 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium rounded-lg text-xs transition">Export Changelist</button>
+                                            </div>
                                             <div className="text-sm text-gray-300 space-y-1 mb-4">
                                                 <p><span className="font-medium text-white">File:</span> {edlFilePath || `${edlData.edl_metadata.edl_filename}.edl`}</p>
                                                 <p>
                                                     <span className="font-medium text-white">Events:</span> {edlData.events.filter(e => e.changeStatus !== 'removed').length}
                                                     {edlData.events.some(e => e.changeStatus === 'new') && <span className="ml-2 text-green-400">+{edlData.events.filter(e => e.changeStatus === 'new').length} new</span>}
                                                     {edlData.events.some(e => e.changeStatus === 'removed') && <span className="ml-2 text-red-400">-{edlData.events.filter(e => e.changeStatus === 'removed').length} removed</span>}
+                                                    {edlData.events.some(e => e.changeStatus === 'trimmed_ok') && <span className="ml-2 text-yellow-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_ok').length} changed (no pull)</span>}
+                                                    {edlData.events.some(e => e.changeStatus === 'trimmed_pull') && <span className="ml-2 text-orange-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_pull').length} need pull</span>}
                                                 </p>
                                             </div>
                                             <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
                                                 <table className="w-full text-xs">
                                                     <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0">
-                                                        <tr>{['#', 'VFX ID', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
+                                                        <tr>{['#', 'VFX ID', 'Status', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
                                                     </thead>
                                                     <tbody className="text-gray-300">
                                                         {edlData.events.map((e, i) => (
-                                                            <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : ''}`}>
+                                                            <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : ''}`}>
                                                                 <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID']}</td>
+                                                                <td className="px-3 py-2 text-xs whitespace-nowrap">
+                                                                    {e.changeStatus === 'new' && <span className="text-green-400 font-medium">NEW</span>}
+                                                                    {e.changeStatus === 'removed' && <span className="text-red-400 font-medium">REMOVED</span>}
+                                                                    {e.changeStatus === 'trimmed_ok' && <span className="text-yellow-400 font-medium">changed but no need to pull</span>}
+                                                                    {e.changeStatus === 'trimmed_pull' && <span className="text-orange-400 font-medium">need to pull</span>}
+                                                                </td>
                                                                 <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.reel}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_start_TC}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.source_end_TC}</td>
