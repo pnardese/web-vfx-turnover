@@ -12,7 +12,8 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 - **Persistent Settings** - Configuration saved locally in browser
 - **Persistent File Data** - Loaded EDL and AVID Bin files are preserved across browser sessions
 - **Clear Data Controls** - Easily clear loaded files with one-click buttons
-- **Change Tracking** - Compare new EDL with cached version: new VFX IDs in green, removed in red
+- **Change Tracking** - Compare new EDL with cached version: new VFX IDs in green, removed in red, trimmed clips flagged by handle coverage (yellow / orange)
+- **Changelist Export** - Export the full changelist as a tab-delimited file for import into spreadsheets or databases
 - **Incoming VFX EDL** - Match VFX vendor clips to original EDL by source timecodes
 
 ## Workflow Guide
@@ -98,11 +99,15 @@ Use the clear buttons (X) next to the upload zones to remove loaded file data.
 
 When loading a new EDL file, the tool compares it with the previously cached version:
 
-- **Grey (unchanged)** - VFX IDs present in both versions
+- **Grey (unchanged)** - VFX IDs present in both versions with identical source timecodes
 - **Green (new)** - VFX IDs added in the new EDL
 - **Red with strikethrough (removed)** - VFX IDs no longer present in the new EDL
+- **Yellow — "changed but no need to pull"** - Source timecodes changed, but the new in/out points fall within the existing pull range (`old Source In − handles` → `old Source Out + handles`); no new pull required
+- **Orange — "need to pull"** - Source timecodes changed and the new in/out points fall outside the existing pull range; a new pull is required
 
 Removed VFX IDs are shown for reference but are excluded from all exports.
+
+The **Export Changelist** button (top-right of the Preview panel) downloads a tab-delimited `.txt` file with one row per event and a `Status` column populated with `NEW`, `REMOVED`, `CHANGED - NO PULL NEEDED`, or `NEED PULL`. The file uses the same column structure as the Google Tab export and can be imported directly into any spreadsheet or database.
 
 ## Export Options
 
@@ -113,6 +118,7 @@ Removed VFX IDs are shown for reference but are excluded from all exports.
 | **ALE Pulls** | Avid Log Exchange file with handles for creating pulls |
 | **Pulls EDL** | EDL for cutting in VFX pulls |
 | **Google Tab** | Tab-delimited file for spreadsheet import |
+| **Export Changelist** | Tab-delimited changelist with Status column; includes all events (new, removed, trimmed, unchanged) |
 
 ## Supported File Formats
 
@@ -142,14 +148,19 @@ Access the tool directly at: [https://pnardese.github.io/web-vfx-turnover/](http
    cd web-vfx-turnover
    ```
 
-2. Start a local HTTP server using Python:
+2. Run the launch script (starts a Python HTTP server on port 8080 and opens the browser automatically):
    ```bash
-   python -m http.server 8000
+   ./launch.sh
+   ```
+
+   Or start the server manually:
+   ```bash
+   python3 -m http.server 8080
    ```
 
 3. Open your browser and navigate to:
    ```
-   http://localhost:8000
+   http://localhost:8080
    ```
 
 ### Option 3: Static Web Server
