@@ -1,5 +1,7 @@
 # VFX Turnover Tool v0.1
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+
 A web-based tool that streamlines VFX sequence preparation for post-production workflows in Avid Media Composer. It processes EDL files and generates multiple output formats for VFX production workflows.
 
 ## Features
@@ -173,4 +175,4 @@ For questions or feedback: [pnardese@gmail.com](mailto:pnardese@gmail.com)
 
 ## License
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+MIT License
