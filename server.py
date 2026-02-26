@@ -105,6 +105,7 @@ def _write_aaf_clip_notes(events, input_aaf_path, output_aaf_path,
     shutil.copy2(input_aaf_path, output_aaf_path)
 
     clip_num = 0
+    marker_data = []
     with aaf2.open(output_aaf_path, 'rw') as f:
         _ensure_descriptive_metadata_def(f)
 
