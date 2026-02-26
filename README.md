@@ -173,4 +173,4 @@ For questions or feedback: [pnardese@gmail.com](mailto:pnardese@gmail.com)
 
 ## License
 
-MIT License
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
