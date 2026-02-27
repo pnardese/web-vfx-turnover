@@ -14,7 +14,7 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 - **Persistent Settings** - Configuration saved locally in browser
 - **Persistent File Data** - Loaded EDL and AVID Bin files are preserved across browser sessions
 - **Clear Data Controls** - Easily clear loaded files with one-click buttons
-- **Change Tracking** - Compare new EDL with cached version: new VFX IDs in green, removed in red, trimmed clips flagged by handle coverage (yellow / orange)
+- **Change Tracking** - Compare new EDL with cached version: new clips in green (NEW - NEED TO PULL), removed in red, trimmed clips flagged as TRIMMED BUT NO NEED TO PULL (yellow) or TRIMMED - NEED TO PULL (orange), clips missing a VFX ID in purple, reel mismatches shown with a warning banner; preview table sorted by VFX ID
 - **Changelist Export** - Export the full changelist as a tab-delimited file for import into spreadsheets or databases
 - **Incoming VFX EDL** - Match VFX vendor clips to original EDL by source timecodes
 
@@ -102,10 +102,17 @@ Use the clear buttons (X) next to the upload zones to remove loaded file data.
 When loading a new EDL file, the tool compares it with the previously cached version:
 
 - **Grey (unchanged)** - VFX IDs present in both versions with identical source timecodes
-- **Green (new)** - VFX IDs added in the new EDL
+- **Green — "NEW - NEED TO PULL"** - VFX IDs added in the new EDL; a pull is always required
 - **Red with strikethrough (removed)** - VFX IDs no longer present in the new EDL
-- **Yellow — "changed but no need to pull"** - Source timecodes changed, but the new in/out points fall within the existing pull range (`old Source In − handles` → `old Source Out + handles`); no new pull required
-- **Orange — "need to pull"** - Source timecodes changed and the new in/out points fall outside the existing pull range; a new pull is required
+- **Yellow — "TRIMMED BUT NO NEED TO PULL"** - Source timecodes changed, but the new in/out points fall within the existing pull range (`old Source In − handles` → `old Source Out + handles`); no new pull required. Changed timecodes are highlighted in yellow.
+- **Orange — "TRIMMED - NEED TO PULL"** - Source timecodes changed and the new in/out points fall outside the existing pull range; a new pull is required. Changed timecodes are highlighted in orange.
+- **Purple — "MISSING VFX ID"** - Clips with no LOC marker (no VFX ID assigned). If the clip can be matched to a cached event by reel and source timecode, the previous VFX ID is shown as `(was: PREV_ID)`.
+
+Warning banners are shown when:
+- Any clip has a **reel mismatch** — the source reel changed between versions (affected VFX IDs listed; rows highlighted in red).
+- Any clip is **missing a VFX ID** — listed with their event number and reel.
+
+Preview table rows are sorted by VFX ID. Removed events are interleaved in alphabetical order.
 
 Removed VFX IDs are shown for reference but are excluded from all exports.
 
