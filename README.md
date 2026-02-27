@@ -79,6 +79,8 @@ When you receive incoming VFX (.mov files), you can import them into Avid, expor
 
 ![Columns to export from Avid bin as TAB text file](imgs/05_vfx_cutins.png)
 
+Relink imported EDL to mov files like in Pulls EDL.
+
 ## Settings
 
 | Setting | Description | Default |
