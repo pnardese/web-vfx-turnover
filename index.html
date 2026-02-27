@@ -11,13 +11,270 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,200;1,700&family=Source+Code+Pro:wght@500&display=swap" rel="stylesheet">
+    <style>
+        /* Root sits above shader canvas */
+        body  { background: #0a0f14; }
+        #root { position: relative; z-index: 1; }
+
+        /* 1. Title shimmer sweep */
+        @keyframes shimmer {
+            0%   { background-position: -200% center; }
+            100% { background-position:  200% center; }
+        }
+        .title-shimmer {
+            background: linear-gradient(90deg, #ffffff 40%, #14b8a6 50%, #ffffff 60%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3.5s linear infinite;
+        }
+
+        /* 2. Page fade-in transition */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .page-enter { animation: fadeInUp 0.25s ease-out forwards; }
+
+        /* 3. Table row stagger */
+        @keyframes rowIn {
+            from { opacity: 0; transform: translateX(-6px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        .table-row-anim {
+            animation: rowIn 0.2s ease-out both;
+            animation-delay: min(calc(var(--row-i, 0) * 15ms), 450ms);
+        }
+
+        /* 4. Teal button glow + ripple */
+        .btn-teal { position: relative; overflow: hidden; }
+        .btn-teal:not(:disabled):hover {
+            box-shadow: 0 0 18px rgba(20,184,166,0.25), 0 0 6px rgba(20,184,166,0.15);
+        }
+        .ripple {
+            position: absolute; border-radius: 50%;
+            background: rgba(255,255,255,0.18);
+            transform: scale(0);
+            animation: ripple-out 0.5s linear;
+            pointer-events: none;
+        }
+        @keyframes ripple-out { to { transform: scale(4); opacity: 0; } }
+
+        /* 5. Status dot pulse */
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .status-dot-online { background: #14b8a6; animation: pulse-teal 2s ease-in-out infinite; }
+        .status-dot-error  { background: #f87171; animation: pulse-red  1.2s ease-in-out infinite; }
+        @keyframes pulse-teal {
+            0%,100% { box-shadow: 0 0 0 0 rgba(20,184,166,0.5); }
+            50%     { box-shadow: 0 0 0 5px rgba(20,184,166,0); }
+        }
+        @keyframes pulse-red {
+            0%,100% { box-shadow: 0 0 0 0 rgba(248,113,113,0.5); }
+            50%     { box-shadow: 0 0 0 5px rgba(248,113,113,0); }
+        }
+    </style>
 </head>
 <body style="font-family: 'Source Code Pro', monospace; font-weight: 500; font-size: 20px;">
+    <canvas id="bg-shader" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block;"></canvas>
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect } = React;
 
+        // ─── Utility functions ────────────────────────────────────────────────────
+        const parseTimecode = (tc, fr) => { const [h,m,s,f] = tc.split(':').map(Number); return h*3600*fr + m*60*fr + s*fr + f; };
+        const framesToTimecode = (tf, fr) => {
+            const h = Math.floor(tf / (3600*fr)); tf %= (3600*fr);
+            const m = Math.floor(tf / (60*fr)); tf %= (60*fr);
+            const s = Math.floor(tf / fr); const f = tf % fr;
+            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}:${String(f).padStart(2,'0')}`;
+        };
+        const addTimecode = (tc, fa, fr) => framesToTimecode(parseTimecode(tc, fr) + fa, fr);
+        const subtractTimecode = (tc, fs, fr) => framesToTimecode(Math.max(0, parseTimecode(tc, fr) - fs), fr);
+
+        // ─── Icon ─────────────────────────────────────────────────────────────────
+        const Icon = ({ path }) => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} /></svg>;
+
+        // ─── DropZone ─────────────────────────────────────────────────────────────
+        const DropZone = ({ dragActive, onDragEnter, onDragLeave, onDrop, onChange, accept, iconPath, inactiveLabel, activeLabel, fileType, loaded, loadedText, filePath, onClear, clearLabel }) => (
+            <div className="flex gap-2 items-stretch">
+                <div onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={e => e.preventDefault()} onDrop={onDrop}
+                     className={`flex-1 bg-[#0a0f14] border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${dragActive ? 'border-[#14b8a6] bg-[#14b8a6]/10' : 'border-[#2a3545] hover:border-[#14b8a6]/50'}`}>
+                    <label className="cursor-pointer block">
+                        <div className="text-[#14b8a6] mb-2 flex justify-center"><Icon path={iconPath} /></div>
+                        <span className="text-sm font-medium text-gray-300">{dragActive ? activeLabel : inactiveLabel}</span>
+                        <div className="text-xs text-gray-500 mt-1">{fileType}</div>
+                        {loaded && <div className="mt-2 text-xs text-[#14b8a6]">✓ {loadedText}</div>}
+                        {filePath && <div className="mt-1 text-xs text-gray-400 break-all">{filePath}</div>}
+                        <input type="file" accept={accept} onChange={onChange} className="hidden" />
+                    </label>
+                </div>
+                {onClear && (
+                    <button onClick={onClear} className="px-2 py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-lg text-xs transition flex flex-col items-center self-center" title={`Clear ${clearLabel}`}>
+                        <span>{clearLabel} Clear</span>
+                        <svg className="w-4 h-4 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                )}
+            </div>
+        );
+
+        // ─── EDLPreview ───────────────────────────────────────────────────────────
+        const EDLPreview = ({ edlData, edlFilePath, onExportChangelist }) => (
+            <div className="bg-[#0a0f14] border border-[#1a2530] rounded-xl p-4 mb-6">
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-xs font-medium text-[#14b8a6] uppercase">Preview</h3>
+                    <button onClick={onExportChangelist} className="px-3 py-1 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium rounded-lg text-xs transition btn-teal">Export Changelist</button>
+                </div>
+                <div className="text-sm text-gray-300 space-y-1 mb-4">
+                    <p><span className="font-medium text-white">File:</span> {edlFilePath || `${edlData.edl_metadata.edl_filename}.edl`}</p>
+                    <p>
+                        <span className="font-medium text-white">Events:</span> {edlData.events.filter(e => e.changeStatus !== 'removed').length}
+                        {edlData.events.some(e => e.changeStatus === 'new') && <span className="ml-2 text-green-400">+{edlData.events.filter(e => e.changeStatus === 'new').length} new</span>}
+                        {edlData.events.some(e => e.changeStatus === 'removed') && <span className="ml-2 text-red-400">-{edlData.events.filter(e => e.changeStatus === 'removed').length} removed</span>}
+                        {edlData.events.some(e => e.changeStatus === 'trimmed_ok') && <span className="ml-2 text-yellow-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_ok').length} changed (no pull)</span>}
+                        {edlData.events.some(e => e.changeStatus === 'trimmed_pull') && <span className="ml-2 text-orange-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_pull').length} need pull</span>}
+                        {edlData.events.some(e => e.changeStatus === 'missing_id') && <span className="ml-2 text-purple-400">{edlData.events.filter(e => e.changeStatus === 'missing_id').length} missing VFX ID</span>}
+                    </p>
+                </div>
+                {edlData.events.some(e => e.changeStatus === 'missing_id') && (
+                    <div className="bg-purple-900/20 border border-purple-800 rounded-lg p-3 mb-3 text-xs">
+                        <span className="text-purple-400 font-semibold uppercase">Missing VFX ID — </span>
+                        <span className="text-purple-300">the following clips have no VFX ID assigned: </span>
+                        <span className="text-purple-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'missing_id').map(e => `event ${e.event_number}${e.reel ? ` (${e.reel})` : ''}${e.prevVfxId ? ` — was: ${e.prevVfxId}` : ''}`).join(', ')}</span>
+                    </div>
+                )}
+                {edlData.events.some(e => e.reelMismatch) && (
+                    <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 mb-3 text-xs">
+                        <span className="text-red-400 font-semibold uppercase">Reel mismatch — </span>
+                        <span className="text-red-300">the following VFX IDs have a different reel than the previous version: </span>
+                        <span className="text-red-400 font-mono">{edlData.events.filter(e => e.reelMismatch).map(e => e['VFX ID']).join(', ')}</span>
+                    </div>
+                )}
+                <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
+                    <table className="w-full text-xs">
+                        <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0">
+                            <tr>{['#', 'VFX ID', 'Status', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
+                        </thead>
+                        <tbody className="text-gray-300">
+                            {[...edlData.events].sort((a, b) => a['VFX ID'].localeCompare(b['VFX ID'])).map((e, i) => (
+                                <tr key={i} style={{"--row-i": i}} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 table-row-anim ${e.changeStatus === 'missing_id' ? 'border-l-2 border-l-purple-500' : e.reelMismatch ? 'border-l-2 border-l-red-500' : ''} ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : e.changeStatus === 'missing_id' ? 'bg-purple-900/20' : ''}`}>
+                                    <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'missing_id' ? 'text-purple-400 font-semibold italic' : e.reelMismatch ? 'text-red-400 font-semibold' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID'] || '[NO ID]'}{e.changeStatus === 'missing_id' && e.prevVfxId && <span className="ml-1 text-purple-500 font-normal not-italic text-xs">(was: {e.prevVfxId})</span>}</td>
+                                    <td className="px-3 py-2 text-xs">
+                                        {e.changeStatus === 'new' && <span className="text-green-400 font-medium">NEW - NEED TO PULL</span>}
+                                        {e.changeStatus === 'removed' && <span className="text-red-400 font-medium">REMOVED</span>}
+                                        {e.changeStatus === 'trimmed_ok' && <span className="text-yellow-400 font-medium">TRIMMED BUT NO NEED TO PULL</span>}
+                                        {e.changeStatus === 'trimmed_pull' && <span className="text-orange-400 font-medium">TRIMMED - NEED TO PULL</span>}
+                                        {e.changeStatus === 'missing_id' && <span className="text-purple-400 font-medium">MISSING VFX ID</span>}
+                                    </td>
+                                    <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.reelMismatch ? 'text-red-400 font-semibold' : ''}`}>{e.reel}{e.reelMismatch && <span className="ml-1 text-red-500 font-normal">(was: {e.prevReel})</span>}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_start_TC !== e.prevSourceIn ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_start_TC !== e.prevSourceIn ? 'text-yellow-400' : ''}`}>{e.source_start_TC}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_end_TC !== e.prevSourceOut ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_end_TC !== e.prevSourceOut ? 'text-yellow-400' : ''}`}>{e.source_end_TC}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_start_TC}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_end_TC}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+
+        // ─── InfoPage ─────────────────────────────────────────────────────────────
+        const InfoPage = () => (
+            <div className="max-w-none text-sm text-gray-300 space-y-4">
+                <h2 className="text-xl font-semibold text-white">About</h2>
+                <p>The VFX Turnover Tool v0.1 streamlines VFX sequence preparation for post-production. It processes EDL files and generates multiple output formats for VFX production.</p>
+                <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Features</h3>
+                <ul className="list-disc pl-5 space-y-1">
+                    <li>Automatic VFX ID generation based on scene numbers</li>
+                    <li>Support for existing markers (LOC lines)</li>
+                    <li>Multiple export formats</li>
+                    <li>Timecode calculations with customizable FPS and handles</li>
+                    <li>Drag-and-drop file upload</li>
+                    <li>Marker position options - place markers at clip start or middle</li>
+                    <li>Persistent settings and file data - settings, loaded EDL and AVID Bin files are saved across browser sessions</li>
+                    <li>Clear buttons to easily remove loaded files</li>
+                    <li>Change tracking - new clips in green (NEW - NEED TO PULL), removed in red, trimmed clips flagged as TRIMMED BUT NO NEED TO PULL (yellow) or TRIMMED - NEED TO PULL (orange), clips missing a VFX ID in purple, reel mismatch warnings; table sorted by VFX ID</li>
+                    <li>Changelist export - tab-delimited file with Status column for import into spreadsheets or databases</li>
+                    <li>VFX Cut-ins - import incoming VFX (.mov files) bin TAB export to generate a cut-in EDL for the timeline</li>
+                </ul>
+                <h3 className="text-base font-semibold text-[#14b8a6] mt-6">VFX ID Format</h3>
+                <p>Format: <code className="bg-[#1a2530] px-2 py-1 rounded text-[#14b8a6]">FILM_ID_SCENE_SHOT</code> (e.g., FILM_ID_001_010)</p>
+                <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Supported Files</h3>
+                <p><strong className="text-white">EDL:</strong> .edl (File_129, CMX 3600) | <strong className="text-white">Bin:</strong> .txt</p>
+                <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Contact</h3>
+                <p><a href="mailto:pnardese@gmail.com" className="text-[#14b8a6] hover:underline">pnardese@gmail.com</a></p>
+            </div>
+        );
+
+        // ─── HelpPage ─────────────────────────────────────────────────────────────
+        const HelpPage = () => (
+            <div className="max-w-none text-sm text-gray-300 space-y-6">
+                <h2 className="text-xl font-semibold text-white">Help</h2>
+                <div>
+                    <h3 className="text-base font-semibold text-[#14b8a6] mb-2">1. Create EDL from Avid</h3>
+                    <p className="mb-3">Create an EDL (File_129 or CMX3600) from the Avid video track containing only shots planned for VFX. In List Options in Avid, check: <strong className="text-white">Clip Names</strong>, <strong className="text-white">Source File Name</strong>, and <strong className="text-white">Markers</strong>.</p>
+                    <p className="mb-3">VFX IDs are created automatically based on the following rule: <code className="bg-[#1a2530] px-2 py-1 rounded text-[#14b8a6]">FILM_ID_Scene_num</code>, where num is a progressive number like 010, 020, 030, etc.</p>
+                    <p className="mb-3">Existing markers on timeline are imported into the tool as existing VFX IDs (you can find them in the EDL as *LOC/* LOC lines). Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs to re-import them correctly into the tool.</p>
+                    <img src="imgs/01_create_edl.png" alt="Configuration of the list tool in Avid Media Composer for EDL exporting" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                    <p className="text-xs text-gray-500 mt-1">Configuration of the list tool in Avid Media Composer for EDL exporting.</p>
+                </div>
+                <div>
+                    <h3 className="text-base font-semibold text-[#14b8a6] mb-2">2. Export Markers and Subcaps</h3>
+                    <p className="mb-3">Export markers and subcaps and import them into Avid to help keep track of VFXs.</p>
+                    <p className="mb-3">The <strong className="text-white">Position</strong> option lets you choose where markers are placed: <strong className="text-white">Start</strong> places the marker at the beginning of each clip, while <strong className="text-white">Middle</strong> places it at the midpoint between the clip's start and end timecodes.</p>
+                    <p>Additional marker options: <strong className="text-white">User</strong> sets the author info associated with each marker, <strong className="text-white">Track</strong> selects the video track number (TC, V1–V8) where markers are placed, and <strong className="text-white">Color</strong> defines the marker color.</p>
+                </div>
+                <div>
+                    <h3 className="text-base font-semibold text-[#14b8a6] mb-2">3. Export Frames</h3>
+                    <p className="mb-3">Export markers from Avid as JPGs to use them to build a VFX Shots database.</p>
+                    <img src="imgs/02_export_frames.png" alt="Export settings for frame extraction at marker's position" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                    <p className="text-xs text-gray-500 mt-1">Export settings for frame extraction at marker's position.</p>
+                </div>
+                <div>
+                    <h3 className="text-base font-semibold text-[#14b8a6] mb-2">4. Export TAB Text Files</h3>
+                    <p>Export TAB text files with VFX IDs info, that can be imported in any database/spreadsheet to build a VFX shot database.</p>
+                </div>
+                <div>
+                    <h3 className="text-base font-semibold text-[#14b8a6] mb-2">5. Changelist</h3>
+                    <p className="mb-3">When a new EDL is loaded over a previously cached one, the tool automatically compares the two versions and flags each clip in the Preview table:</p>
+                    <ul className="list-disc pl-5 space-y-1 mb-3">
+                        <li><strong className="text-green-400">Green — NEW - NEED TO PULL</strong>: VFX ID not present in the previous EDL. A pull is always required.</li>
+                        <li><strong className="text-red-400">Red — REMOVED</strong>: VFX ID present in the previous EDL but missing in the new one. Shown for reference; excluded from all exports.</li>
+                        <li><strong className="text-yellow-400">Yellow — TRIMMED BUT NO NEED TO PULL</strong>: Source timecodes changed, but the new in/out points fall within the existing pull range (<code className="bg-[#1a2530] px-1 rounded">old Source In − handles</code> → <code className="bg-[#1a2530] px-1 rounded">old Source Out + handles</code>). The material is already covered by the previous pull. Changed timecodes are highlighted in yellow.</li>
+                        <li><strong className="text-orange-400">Orange — TRIMMED - NEED TO PULL</strong>: Source timecodes changed and the new in/out points exceed the existing pull range. A new pull is required. Changed timecodes are highlighted in orange.</li>
+                        <li><strong className="text-purple-400">Purple — MISSING VFX ID</strong>: Clip has no LOC marker (no VFX ID assigned). If the clip can be matched to a cached event by reel and source timecode, the previous VFX ID is shown as <code className="bg-[#1a2530] px-1 rounded">(was: PREV_ID)</code>.</li>
+                    </ul>
+                    <p className="mb-3">Warning banners are shown at the top of the Preview panel when clips have a <strong className="text-white">reel mismatch</strong> (source reel changed between versions — affected VFX IDs listed in red) or are <strong className="text-white">missing a VFX ID</strong> (listed with event number and reel). Rows with a reel mismatch show a red left border.</p>
+                    <p className="mb-3">Preview table rows are sorted by VFX ID. Removed events are interleaved in alphabetical order.</p>
+                    <p>The <strong className="text-white">Export Changelist</strong> button (top-right of the Preview panel) downloads a tab-delimited <code className="bg-[#1a2530] px-1 rounded">_changelist.txt</code> file. It uses the same column structure as the DB Export, with the <strong className="text-white">Status</strong> column set to <code className="bg-[#1a2530] px-1 rounded">NEW</code>, <code className="bg-[#1a2530] px-1 rounded">REMOVED</code>, <code className="bg-[#1a2530] px-1 rounded">CHANGED - NO PULL NEEDED</code>, or <code className="bg-[#1a2530] px-1 rounded">NEED PULL</code>. All events are included so the full changelist can be imported into any spreadsheet or database.</p>
+                </div>
+                <div>
+                    <h3 className="text-base font-semibold text-[#14b8a6] mb-2">7. Export Pulls ALE</h3>
+                    <p className="mb-3">Export Pulls ALE to create pulls (subclips with VFX IDs as names from the master clips). After selecting master clips in bin, drag ALE file on bin. Import settings: <em className="text-white">Merge events with known sources and automatically create subclips</em></p>
+                    <img src="imgs/03_merge_events_ale.png" alt="Import settings" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                    <p className="text-xs text-gray-500 mt-1">Import settings.</p>
+                </div>
+                <div>
+                    <h3 className="text-base font-semibold text-[#14b8a6] mb-2">8. Export Pulls EDL</h3>
+                    <p className="mb-3">Export Pulls EDL to create a timeline with the pull subclips. Import the EDL into Avid bin, relink to the pull subclips using Names.</p>
+                    <img src="imgs/04_relink_edl_pulls_v02.png" alt="Relink configuration" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                    <p className="text-xs text-gray-500 mt-1">Relink configuration.</p>
+                </div>
+                <div>
+                    <h3 className="text-base font-semibold text-[#14b8a6] mb-2">9. VFX Cut-ins</h3>
+                    <p className="mb-3">When you receive incoming VFX (.mov files), you can import them into Avid, export the bin in TAB format to create an EDL for cutting in the VFX into the timeline. Columns: <strong className="text-white">Color</strong>, <strong className="text-white">Name</strong>, <strong className="text-white">Duration</strong>, <strong className="text-white">Start</strong>, <strong className="text-white">End</strong>, <strong className="text-white">Tape</strong>.</p>
+                    <img src="imgs/05_vfx_cutins.png" alt="Columns to export from Avid bin as TAB text file" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                    <p className="text-xs text-gray-500 mt-1">Columns to export from Avid bin as TAB text file.</p>
+                    <p className="mt-3">Relink imported EDL to mov files like in Pulls EDL.</p>
+                </div>
+            </div>
+        );
+
+        // ─── VFXTurnoverApp ───────────────────────────────────────────────────────
         const VFXTurnoverApp = () => {
+            // ── State ─────────────────────────────────────────────────────────────
             const [currentPage, setCurrentPage] = useState('main');
             const [edlData, setEdlData] = useState(() => { try { return JSON.parse(localStorage.getItem('vfx_edlData')); } catch { return null; } });
             const [edlFilePath, setEdlFilePath] = useState(() => localStorage.getItem('vfx_edlFilePath') || '');
@@ -34,6 +291,7 @@
             const [markerColor, setMarkerColor] = useState(() => localStorage.getItem('vfx_markerColor') || 'green');
             const [markerPosition, setMarkerPosition] = useState(() => localStorage.getItem('vfx_markerPosition') || 'start');
 
+            // ── Persistence effects ───────────────────────────────────────────────
             useEffect(() => { localStorage.setItem('vfx_filmId', filmId); }, [filmId]);
             useEffect(() => { localStorage.setItem('vfx_fps', fps); }, [fps]);
             useEffect(() => { if (!isNaN(handles)) localStorage.setItem('vfx_handles', handles); }, [handles]);
@@ -46,6 +304,7 @@
             useEffect(() => { if (binData) localStorage.setItem('vfx_binData', JSON.stringify(binData)); else localStorage.removeItem('vfx_binData'); }, [binData]);
             useEffect(() => { localStorage.setItem('vfx_binFilePath', binFilePath); }, [binFilePath]);
 
+            // ── EDL parsing ───────────────────────────────────────────────────────
             const parseEDL = (edlText, autoGenerate = true) => {
                 const lines = edlText.split('\n');
                 const edlData = { edl_metadata: { edl_title: '', edl_fcm: '' }, events: [] };
@@ -96,16 +355,7 @@
                 return edlData;
             };
 
-            const parseTimecode = (tc, fr) => { const [h,m,s,f] = tc.split(':').map(Number); return h*3600*fr + m*60*fr + s*fr + f; };
-            const framesToTimecode = (tf, fr) => {
-                const h = Math.floor(tf / (3600*fr)); tf %= (3600*fr);
-                const m = Math.floor(tf / (60*fr)); tf %= (60*fr);
-                const s = Math.floor(tf / fr); const f = tf % fr;
-                return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}:${String(f).padStart(2,'0')}`;
-            };
-            const addTimecode = (tc, fa, fr) => framesToTimecode(parseTimecode(tc, fr) + fa, fr);
-            const subtractTimecode = (tc, fs, fr) => framesToTimecode(Math.max(0, parseTimecode(tc, fr) - fs), fr);
-
+            // ── File processing ───────────────────────────────────────────────────
             const processEDLFile = (file) => {
                 const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
                 if (ext !== '.edl') { setStatus('Error: Invalid file type. Please upload an EDL file (.edl)'); return; }
@@ -243,6 +493,7 @@
 
             const getActiveEvents = () => edlData?.events.filter(e => e.changeStatus !== 'removed') || [];
 
+            // ── Export functions ──────────────────────────────────────────────────
             const exportMarkers = () => {
                 if (!edlData) return;
                 const bn = edlData.edl_metadata.edl_filename || 'output';
@@ -316,27 +567,28 @@
                 downloadFile(content, `${bn}_incoming.edl`);
             };
 
+            // ── Drag and drop handlers ────────────────────────────────────────────
             const handleDrag = (e, setter, val) => { e.preventDefault(); e.stopPropagation(); setter(val); };
             const handleDrop = (e, processor, setter) => { e.preventDefault(); e.stopPropagation(); setter(false); if (e.dataTransfer.files?.[0]) processor(e.dataTransfer.files[0]); };
 
-            const Icon = ({ path }) => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} /></svg>;
-
+            // ── Render ────────────────────────────────────────────────────────────
             return (
-                <div className="min-h-screen bg-[#0a0f14] p-6">
+                <div className="min-h-screen p-6">
                     <div className="max-w-6xl mx-auto">
                         <div className="bg-[#0d1318] rounded-xl p-6 border border-[#1a2530]">
                             <div className="pb-5 mb-6 border-b border-[#1a2530]">
-                                <h1 className="text-white mb-1 italic" style={{fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '48px'}}>VFX Turnover Tool</h1>
+                                <h1 className="title-shimmer mb-1 italic" style={{fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '48px'}}>VFX Turnover Tool</h1>
                                 <p className="text-gray-400 mb-4" style={{fontFamily: 'Inter, sans-serif', fontWeight: 200, fontSize: '20px'}}>Manage VFX Workflow in Avid Media Composer</p>
                                 <div className="flex gap-2">
                                     {['main', 'info', 'help'].map(p => (
-                                        <button key={p} onClick={() => setCurrentPage(p)} className={`px-4 py-2 text-sm rounded-lg transition ${currentPage === p ? 'bg-[#14b8a6] text-[#0a0f14] font-medium' : 'bg-[#1a2530] text-gray-300 hover:bg-[#243040] border border-[#2a3545]'}`}>
+                                        <button key={p} onClick={() => setCurrentPage(p)} className={`px-4 py-2 text-sm rounded-lg transition ${currentPage === p ? 'bg-[#14b8a6] text-[#0a0f14] font-medium btn-teal' : 'bg-[#1a2530] text-gray-300 hover:bg-[#243040] border border-[#2a3545]'}`}>
                                             {p.charAt(0).toUpperCase() + p.slice(1)}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
+                            <div key={currentPage} className="page-enter">
                             {currentPage === 'main' && (
                                 <>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -348,33 +600,32 @@
                                         ))}
                                     </div>
 
-                                    {status && <div className={`border rounded-lg p-3 text-sm mb-6 ${status.startsWith('Error') ? 'bg-red-900/20 border-red-800 text-red-400' : 'bg-[#14b8a6]/10 border-[#14b8a6]/30 text-[#14b8a6]'}`}>{status}</div>}
+                                    {status && <div className={`border rounded-lg p-3 text-sm mb-6 flex items-center gap-2 ${status.startsWith('Error') ? 'bg-red-900/20 border-red-800 text-red-400' : 'bg-[#14b8a6]/10 border-[#14b8a6]/30 text-[#14b8a6]'}`}><span className={`status-dot ${status.startsWith('Error') ? 'status-dot-error' : 'status-dot-online'}`}></span>{status}</div>}
 
                                     <div className="mb-6">
-                                        <div className="flex gap-2 items-stretch">
-                                            <div onDragEnter={(e) => handleDrag(e, setEdlDragActive, true)} onDragLeave={(e) => handleDrag(e, setEdlDragActive, false)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, processEDLFile, setEdlDragActive)} className={`flex-1 bg-[#0a0f14] border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${edlDragActive ? 'border-[#14b8a6] bg-[#14b8a6]/10' : 'border-[#2a3545] hover:border-[#14b8a6]/50'}`}>
-                                                <label className="cursor-pointer block">
-                                                    <div className="text-[#14b8a6] mb-2 flex justify-center"><Icon path="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></div>
-                                                    <span className="text-sm font-medium text-gray-300">{edlDragActive ? 'Drop EDL file here' : 'Drag & drop EDL file or click to browse'}</span>
-                                                    <div className="text-xs text-gray-500 mt-1">.edl</div>
-                                                    {edlData && <div className="mt-2 text-xs text-[#14b8a6]">✓ {edlData.events.length} events loaded</div>}
-                                                    {edlFilePath && <div className="mt-1 text-xs text-gray-400 break-all">{edlFilePath}</div>}
-                                                    <input type="file" accept=".edl" onChange={(e) => e.target.files[0] && processEDLFile(e.target.files[0])} className="hidden" />
-                                                </label>
-                                            </div>
-                                            {edlData && (
-                                                <button onClick={clearEdlData} className="px-2 py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-lg text-xs transition flex flex-col items-center self-center" title="Clear EDL">
-                                                    <span>EDL Clear</span>
-                                                    <svg className="w-4 h-4 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
-                                            )}
-                                        </div>
+                                        <DropZone
+                                            dragActive={edlDragActive}
+                                            onDragEnter={(e) => handleDrag(e, setEdlDragActive, true)}
+                                            onDragLeave={(e) => handleDrag(e, setEdlDragActive, false)}
+                                            onDrop={(e) => handleDrop(e, processEDLFile, setEdlDragActive)}
+                                            onChange={(e) => e.target.files[0] && processEDLFile(e.target.files[0])}
+                                            accept=".edl"
+                                            iconPath="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                            inactiveLabel="Drag & drop EDL file or click to browse"
+                                            activeLabel="Drop EDL file here"
+                                            fileType=".edl"
+                                            loaded={!!edlData}
+                                            loadedText={`${edlData?.events.length} events loaded`}
+                                            filePath={edlFilePath}
+                                            onClear={edlData ? clearEdlData : null}
+                                            clearLabel="EDL"
+                                        />
                                     </div>
 
                                     <div className="mb-6">
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Export Options</h2>
                                         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 items-end">
-                                            <button onClick={exportMarkers} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Markers</button>
+                                            <button onClick={exportMarkers} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">Markers</button>
                                             <div>
                                                 <label className="block text-xs text-gray-500 mb-1">User info</label>
                                                 <input type="text" value={markerUser} onChange={(e) => setMarkerUser(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
@@ -400,94 +651,34 @@
                                         </div>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                             {[['Subcaps', exportSubcaps], ['Pulls ALE', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['DB Export', exportGoogleTab]].map(([name, fn]) => (
-                                                <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">{name}</button>
+                                                <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">{name}</button>
                                             ))}
                                         </div>
                                     </div>
 
-                                    {edlData && (
-                                        <div className="bg-[#0a0f14] border border-[#1a2530] rounded-xl p-4 mb-6">
-                                            <div className="flex justify-between items-center mb-3">
-                                                <h3 className="text-xs font-medium text-[#14b8a6] uppercase">Preview</h3>
-                                                <button onClick={exportChangelist} className="px-3 py-1 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium rounded-lg text-xs transition">Export Changelist</button>
-                                            </div>
-                                            <div className="text-sm text-gray-300 space-y-1 mb-4">
-                                                <p><span className="font-medium text-white">File:</span> {edlFilePath || `${edlData.edl_metadata.edl_filename}.edl`}</p>
-                                                <p>
-                                                    <span className="font-medium text-white">Events:</span> {edlData.events.filter(e => e.changeStatus !== 'removed').length}
-                                                    {edlData.events.some(e => e.changeStatus === 'new') && <span className="ml-2 text-green-400">+{edlData.events.filter(e => e.changeStatus === 'new').length} new</span>}
-                                                    {edlData.events.some(e => e.changeStatus === 'removed') && <span className="ml-2 text-red-400">-{edlData.events.filter(e => e.changeStatus === 'removed').length} removed</span>}
-                                                    {edlData.events.some(e => e.changeStatus === 'trimmed_ok') && <span className="ml-2 text-yellow-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_ok').length} changed (no pull)</span>}
-                                                    {edlData.events.some(e => e.changeStatus === 'trimmed_pull') && <span className="ml-2 text-orange-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_pull').length} need pull</span>}
-                                                    {edlData.events.some(e => e.changeStatus === 'missing_id') && <span className="ml-2 text-purple-400">{edlData.events.filter(e => e.changeStatus === 'missing_id').length} missing VFX ID</span>}
-                                                </p>
-                                            </div>
-                                            {edlData.events.some(e => e.changeStatus === 'missing_id') && (
-                                                <div className="bg-purple-900/20 border border-purple-800 rounded-lg p-3 mb-3 text-xs">
-                                                    <span className="text-purple-400 font-semibold uppercase">Missing VFX ID — </span>
-                                                    <span className="text-purple-300">the following clips have no VFX ID assigned: </span>
-                                                    <span className="text-purple-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'missing_id').map(e => `event ${e.event_number}${e.reel ? ` (${e.reel})` : ''}${e.prevVfxId ? ` — was: ${e.prevVfxId}` : ''}`).join(', ')}</span>
-                                                </div>
-                                            )}
-                                            {edlData.events.some(e => e.reelMismatch) && (
-                                                <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 mb-3 text-xs">
-                                                    <span className="text-red-400 font-semibold uppercase">Reel mismatch — </span>
-                                                    <span className="text-red-300">the following VFX IDs have a different reel than the previous version: </span>
-                                                    <span className="text-red-400 font-mono">{edlData.events.filter(e => e.reelMismatch).map(e => e['VFX ID']).join(', ')}</span>
-                                                </div>
-                                            )}
-                                            <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
-                                                <table className="w-full text-xs">
-                                                    <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0">
-                                                        <tr>{['#', 'VFX ID', 'Status', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
-                                                    </thead>
-                                                    <tbody className="text-gray-300">
-                                                        {[...edlData.events].sort((a, b) => a['VFX ID'].localeCompare(b['VFX ID'])).map((e, i) => (
-                                                            <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'missing_id' ? 'border-l-2 border-l-purple-500' : e.reelMismatch ? 'border-l-2 border-l-red-500' : ''} ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : e.changeStatus === 'missing_id' ? 'bg-purple-900/20' : ''}`}>
-                                                                <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'missing_id' ? 'text-purple-400 font-semibold italic' : e.reelMismatch ? 'text-red-400 font-semibold' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID'] || '[NO ID]'}{e.changeStatus === 'missing_id' && e.prevVfxId && <span className="ml-1 text-purple-500 font-normal not-italic text-xs">(was: {e.prevVfxId})</span>}</td>
-                                                                <td className="px-3 py-2 text-xs">
-                                                                    {e.changeStatus === 'new' && <span className="text-green-400 font-medium">NEW - NEED TO PULL</span>}
-                                                                    {e.changeStatus === 'removed' && <span className="text-red-400 font-medium">REMOVED</span>}
-                                                                    {e.changeStatus === 'trimmed_ok' && <span className="text-yellow-400 font-medium">TRIMMED BUT NO NEED TO PULL</span>}
-                                                                    {e.changeStatus === 'trimmed_pull' && <span className="text-orange-400 font-medium">TRIMMED - NEED TO PULL</span>}
-                                                                    {e.changeStatus === 'missing_id' && <span className="text-purple-400 font-medium">MISSING VFX ID</span>}
-                                                                </td>
-                                                                <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.reelMismatch ? 'text-red-400 font-semibold' : ''}`}>{e.reel}{e.reelMismatch && <span className="ml-1 text-red-500 font-normal">(was: {e.prevReel})</span>}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_start_TC !== e.prevSourceIn ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_start_TC !== e.prevSourceIn ? 'text-yellow-400' : ''}`}>{e.source_start_TC}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_end_TC !== e.prevSourceOut ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_end_TC !== e.prevSourceOut ? 'text-yellow-400' : ''}`}>{e.source_end_TC}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_start_TC}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_end_TC}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    )}
+                                    {edlData && <EDLPreview edlData={edlData} edlFilePath={edlFilePath} onExportChangelist={exportChangelist} />}
 
                                     <div className="pt-6 border-t border-[#1a2530]">
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Incoming VFX EDL</h2>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                                            <div className="flex gap-2 items-stretch">
-                                                <div onDragEnter={(e) => handleDrag(e, setBinDragActive, true)} onDragLeave={(e) => handleDrag(e, setBinDragActive, false)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, processBinFile, setBinDragActive)} className={`flex-1 bg-[#0a0f14] border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition ${binDragActive ? 'border-[#14b8a6] bg-[#14b8a6]/10' : 'border-[#2a3545] hover:border-[#14b8a6]/50'}`}>
-                                                    <label className="cursor-pointer block">
-                                                        <div className="text-[#14b8a6] mb-1 flex justify-center"><Icon path="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></div>
-                                                        <span className="text-sm font-medium text-gray-300">{binDragActive ? 'Drop AVID Bin file here' : 'Drag & drop AVID Bin File or click to browse'}</span>
-                                                        <div className="text-xs text-gray-500 mt-1">.txt</div>
-                                                        {binData && <div className="mt-2 text-xs text-[#14b8a6]">✓ {binData.length} entries loaded</div>}
-                                                        {binFilePath && <div className="mt-1 text-xs text-gray-400 break-all">{binFilePath}</div>}
-                                                        <input type="file" accept=".txt" onChange={(e) => e.target.files[0] && processBinFile(e.target.files[0])} className="hidden" />
-                                                    </label>
-                                                </div>
-                                                {binData && (
-                                                    <button onClick={clearBinData} className="px-2 py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-lg text-xs transition flex flex-col items-center self-center" title="Clear AVID Bin">
-                                                        <span>AVID Bin Clear</span>
-                                                        <svg className="w-4 h-4 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <button onClick={exportFinalVFXEDL} disabled={!edlData || !binData} className="px-4 py-3 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition">Export Incoming VFX EDL</button>
+                                            <DropZone
+                                                dragActive={binDragActive}
+                                                onDragEnter={(e) => handleDrag(e, setBinDragActive, true)}
+                                                onDragLeave={(e) => handleDrag(e, setBinDragActive, false)}
+                                                onDrop={(e) => handleDrop(e, processBinFile, setBinDragActive)}
+                                                onChange={(e) => e.target.files[0] && processBinFile(e.target.files[0])}
+                                                accept=".txt"
+                                                iconPath="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                                inactiveLabel="Drag & drop AVID Bin File or click to browse"
+                                                activeLabel="Drop AVID Bin file here"
+                                                fileType=".txt"
+                                                loaded={!!binData}
+                                                loadedText={`${binData?.length} entries loaded`}
+                                                filePath={binFilePath}
+                                                onClear={binData ? clearBinData : null}
+                                                clearLabel="AVID Bin"
+                                            />
+                                            <button onClick={exportFinalVFXEDL} disabled={!edlData || !binData} className="px-4 py-3 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">Export Incoming VFX EDL</button>
                                         </div>
                                         {binData && (
                                             <div className="bg-[#0a0f14] border border-[#1a2530] rounded-xl p-4 mt-4">
@@ -503,7 +694,7 @@
                                                         </thead>
                                                         <tbody className="text-gray-300">
                                                             {binData.map((b, i) => (
-                                                                <tr key={i} className="border-b border-[#1a2530] hover:bg-[#1a2530]/50">
+                                                                <tr key={i} style={{"--row-i": i}} className="border-b border-[#1a2530] hover:bg-[#1a2530]/50 table-row-anim">
                                                                     <td className="px-3 py-2">{i + 1}</td>
                                                                     <td className="px-3 py-2 font-mono">{b.Name}</td>
                                                                     <td className="px-3 py-2 font-mono">{b.Start}</td>
@@ -519,103 +710,9 @@
                                 </>
                             )}
 
-                            {currentPage === 'info' && (
-                                <div className="max-w-none text-sm text-gray-300 space-y-4">
-                                    <h2 className="text-xl font-semibold text-white">About</h2>
-                                    <p>The VFX Turnover Tool v0.1 streamlines VFX sequence preparation for post-production. It processes EDL files and generates multiple output formats for VFX production.</p>
-                                    <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Features</h3>
-                                    <ul className="list-disc pl-5 space-y-1">
-                                        <li>Automatic VFX ID generation based on scene numbers</li>
-                                        <li>Support for existing markers (LOC lines)</li>
-                                        <li>Multiple export formats</li>
-                                        <li>Timecode calculations with customizable FPS and handles</li>
-                                        <li>Drag-and-drop file upload</li>
-                                        <li>Marker position options - place markers at clip start or middle</li>
-                                        <li>Persistent settings and file data - settings, loaded EDL and AVID Bin files are saved across browser sessions</li>
-                                        <li>Clear buttons to easily remove loaded files</li>
-                                        <li>Change tracking - new clips in green (NEW - NEED TO PULL), removed in red, trimmed clips flagged as TRIMMED BUT NO NEED TO PULL (yellow) or TRIMMED - NEED TO PULL (orange), clips missing a VFX ID in purple, reel mismatch warnings; table sorted by VFX ID</li>
-                                        <li>Changelist export - tab-delimited file with Status column for import into spreadsheets or databases</li>
-                                        <li>VFX Cut-ins - import incoming VFX (.mov files) bin TAB export to generate a cut-in EDL for the timeline</li>
-                                    </ul>
-                                    <h3 className="text-base font-semibold text-[#14b8a6] mt-6">VFX ID Format</h3>
-                                    <p>Format: <code className="bg-[#1a2530] px-2 py-1 rounded text-[#14b8a6]">FILM_ID_SCENE_SHOT</code> (e.g., FILM_ID_001_010)</p>
-                                    <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Supported Files</h3>
-                                    <p><strong className="text-white">EDL:</strong> .edl (File_129, CMX 3600) | <strong className="text-white">Bin:</strong> .txt</p>
-                                    <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Contact</h3>
-                                    <p><a href="mailto:pnardese@gmail.com" className="text-[#14b8a6] hover:underline">pnardese@gmail.com</a></p>
-                                </div>
-                            )}
-
-                            {currentPage === 'help' && (
-                                <div className="max-w-none text-sm text-gray-300 space-y-6">
-                                    <h2 className="text-xl font-semibold text-white">Help</h2>
-
-                                    <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">1. Create EDL from Avid</h3>
-                                        <p className="mb-3">Create an EDL (File_129 or CMX3600) from the Avid video track containing only shots planned for VFX. In List Options in Avid, check: <strong className="text-white">Clip Names</strong>, <strong className="text-white">Source File Name</strong>, and <strong className="text-white">Markers</strong>.</p>
-                                        <p className="mb-3">VFX IDs are created automatically based on the following rule: <code className="bg-[#1a2530] px-2 py-1 rounded text-[#14b8a6]">FILM_ID_Scene_num</code>, where num is a progressive number like 010, 020, 030, etc.</p>
-                                        <p className="mb-3">Existing markers on timeline are imported into the tool as existing VFX IDs (you can find them in the EDL as *LOC/* LOC lines). Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs to re-import them correctly into the tool.</p>
-                                        <img src="imgs/01_create_edl.png" alt="Configuration of the list tool in Avid Media Composer for EDL exporting" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
-                                        <p className="text-xs text-gray-500 mt-1">Configuration of the list tool in Avid Media Composer for EDL exporting.</p>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">2. Export Markers and Subcaps</h3>
-                                        <p className="mb-3">Export markers and subcaps and import them into Avid to help keep track of VFXs.</p>
-                                        <p className="mb-3">The <strong className="text-white">Position</strong> option lets you choose where markers are placed: <strong className="text-white">Start</strong> places the marker at the beginning of each clip, while <strong className="text-white">Middle</strong> places it at the midpoint between the clip's start and end timecodes.</p>
-                                        <p>Additional marker options: <strong className="text-white">User</strong> sets the author info associated with each marker, <strong className="text-white">Track</strong> selects the video track number (TC, V1–V8) where markers are placed, and <strong className="text-white">Color</strong> defines the marker color.</p>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">3. Export Frames</h3>
-                                        <p className="mb-3">Export markers from Avid as JPGs to use them to build a VFX Shots database.</p>
-                                        <img src="imgs/02_export_frames.png" alt="Export settings for frame extraction at marker's position" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
-                                        <p className="text-xs text-gray-500 mt-1">Export settings for frame extraction at marker's position.</p>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">4. Export TAB Text Files</h3>
-                                        <p>Export TAB text files with VFX IDs info, that can be imported in any database/spreadsheet to build a VFX shot database.</p>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">5. Changelist</h3>
-                                        <p className="mb-3">When a new EDL is loaded over a previously cached one, the tool automatically compares the two versions and flags each clip in the Preview table:</p>
-                                        <ul className="list-disc pl-5 space-y-1 mb-3">
-                                            <li><strong className="text-green-400">Green — NEW - NEED TO PULL</strong>: VFX ID not present in the previous EDL. A pull is always required.</li>
-                                            <li><strong className="text-red-400">Red — REMOVED</strong>: VFX ID present in the previous EDL but missing in the new one. Shown for reference; excluded from all exports.</li>
-                                            <li><strong className="text-yellow-400">Yellow — TRIMMED BUT NO NEED TO PULL</strong>: Source timecodes changed, but the new in/out points fall within the existing pull range (<code className="bg-[#1a2530] px-1 rounded">old Source In − handles</code> → <code className="bg-[#1a2530] px-1 rounded">old Source Out + handles</code>). The material is already covered by the previous pull. Changed timecodes are highlighted in yellow.</li>
-                                            <li><strong className="text-orange-400">Orange — TRIMMED - NEED TO PULL</strong>: Source timecodes changed and the new in/out points exceed the existing pull range. A new pull is required. Changed timecodes are highlighted in orange.</li>
-                                            <li><strong className="text-purple-400">Purple — MISSING VFX ID</strong>: Clip has no LOC marker (no VFX ID assigned). If the clip can be matched to a cached event by reel and source timecode, the previous VFX ID is shown as <code className="bg-[#1a2530] px-1 rounded">(was: PREV_ID)</code>.</li>
-                                        </ul>
-                                        <p className="mb-3">Warning banners are shown at the top of the Preview panel when clips have a <strong className="text-white">reel mismatch</strong> (source reel changed between versions — affected VFX IDs listed in red) or are <strong className="text-white">missing a VFX ID</strong> (listed with event number and reel). Rows with a reel mismatch show a red left border.</p>
-                                        <p className="mb-3">Preview table rows are sorted by VFX ID. Removed events are interleaved in alphabetical order.</p>
-                                        <p>The <strong className="text-white">Export Changelist</strong> button (top-right of the Preview panel) downloads a tab-delimited <code className="bg-[#1a2530] px-1 rounded">_changelist.txt</code> file. It uses the same column structure as the DB Export, with the <strong className="text-white">Status</strong> column set to <code className="bg-[#1a2530] px-1 rounded">NEW</code>, <code className="bg-[#1a2530] px-1 rounded">REMOVED</code>, <code className="bg-[#1a2530] px-1 rounded">CHANGED - NO PULL NEEDED</code>, or <code className="bg-[#1a2530] px-1 rounded">NEED PULL</code>. All events are included so the full changelist can be imported into any spreadsheet or database.</p>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">7. Export Pulls ALE</h3>
-                                        <p className="mb-3">Export Pulls ALE to create pulls (subclips with VFX IDs as names from the master clips). After selecting master clips in bin, drag ALE file on bin. Import settings: <em className="text-white">Merge events with known sources and automatically create subclips</em></p>
-                                        <img src="imgs/03_merge_events_ale.png" alt="Import settings" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
-                                        <p className="text-xs text-gray-500 mt-1">Import settings.</p>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">8. Export Pulls EDL</h3>
-                                        <p className="mb-3">Export Pulls EDL to create a timeline with the pull subclips. Import the EDL into Avid bin, relink to the pull subclips using Names.</p>
-                                        <img src="imgs/04_relink_edl_pulls_v02.png" alt="Relink configuration" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
-                                        <p className="text-xs text-gray-500 mt-1">Relink configuration.</p>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-base font-semibold text-[#14b8a6] mb-2">9. VFX Cut-ins</h3>
-                                        <p className="mb-3">When you receive incoming VFX (.mov files), you can import them into Avid, export the bin in TAB format to create an EDL for cutting in the VFX into the timeline. Columns: <strong className="text-white">Color</strong>, <strong className="text-white">Name</strong>, <strong className="text-white">Duration</strong>, <strong className="text-white">Start</strong>, <strong className="text-white">End</strong>, <strong className="text-white">Tape</strong>.</p>
-                                        <img src="imgs/05_vfx_cutins.png" alt="Columns to export from Avid bin as TAB text file" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
-                                        <p className="text-xs text-gray-500 mt-1">Columns to export from Avid bin as TAB text file.</p>
-                                        <p className="mt-3">Relink imported EDL to mov files like in Pulls EDL.</p>
-                                    </div>
-                                </div>
-                            )}
+                            {currentPage === 'info' && <InfoPage />}
+                            {currentPage === 'help' && <HelpPage />}
+                            </div>
                         </div>
                         <div className="text-center text-gray-500 text-sm mt-8 pb-4">
                             <p>contact: pnardese@gmail.com</p>
@@ -627,6 +724,79 @@
         };
 
         ReactDOM.render(<VFXTurnoverApp />, document.getElementById('root'));
+    </script>
+    <script>
+        (function () {
+            // ── WebGL background shader ──────────────────────────────────────
+            var canvas = document.getElementById('bg-shader');
+            if (!canvas) return;
+            var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) { canvas.style.display = 'none'; return; }
+
+            var vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}';
+            var fs = [
+                'precision mediump float;',
+                'uniform float t; uniform vec2 r;',
+                'void main(){',
+                '  vec2 uv=gl_FragCoord.xy/r;',
+                '  float gx=step(0.97,fract(uv.x*48.));',
+                '  float gy=step(0.97,fract(uv.y*27.));',
+                '  float g=max(gx,gy);',
+                '  float sc=sin(uv.y*300.+t*0.4)*0.008+0.008;',
+                '  float vg=1.-smoothstep(0.5,1.2,length(uv-0.5)*1.5);',
+                '  vec3 c=vec3(0.039,0.059,0.078);',
+                '  c+=g*vec3(0.,0.22,0.20);',
+                '  c+=sc*vec3(0.,0.07,0.07);',
+                '  gl_FragColor=vec4(c*vg,1.);',
+                '}'
+            ].join('\n');
+
+            function mkShader(type, src) {
+                var s = gl.createShader(type);
+                gl.shaderSource(s, src); gl.compileShader(s); return s;
+            }
+            var prog = gl.createProgram();
+            gl.attachShader(prog, mkShader(gl.VERTEX_SHADER, vs));
+            gl.attachShader(prog, mkShader(gl.FRAGMENT_SHADER, fs));
+            gl.linkProgram(prog); gl.useProgram(prog);
+
+            var buf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+            var ap = gl.getAttribLocation(prog, 'p');
+            gl.enableVertexAttribArray(ap);
+            gl.vertexAttribPointer(ap, 2, gl.FLOAT, false, 0, 0);
+
+            var uT = gl.getUniformLocation(prog, 't');
+            var uR = gl.getUniformLocation(prog, 'r');
+
+            function resize() {
+                canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+            resize(); window.addEventListener('resize', resize);
+
+            var t0 = Date.now();
+            (function frame() {
+                gl.uniform1f(uT, (Date.now() - t0) / 1000);
+                gl.uniform2f(uR, canvas.width, canvas.height);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                requestAnimationFrame(frame);
+            })();
+
+            // ── Button ripple ────────────────────────────────────────────────
+            document.addEventListener('click', function (e) {
+                var btn = e.target.closest('.btn-teal');
+                if (!btn || btn.disabled) return;
+                var el = document.createElement('span');
+                el.className = 'ripple';
+                var rect = btn.getBoundingClientRect();
+                var sz = Math.max(rect.width, rect.height);
+                el.style.cssText = 'width:' + sz + 'px;height:' + sz + 'px;left:' + (e.clientX - rect.left - sz / 2) + 'px;top:' + (e.clientY - rect.top - sz / 2) + 'px';
+                btn.appendChild(el);
+                el.addEventListener('animationend', function () { el.remove(); });
+            });
+        })();
     </script>
 </body>
 </html>
