@@ -46,7 +46,7 @@
             useEffect(() => { if (binData) localStorage.setItem('vfx_binData', JSON.stringify(binData)); else localStorage.removeItem('vfx_binData'); }, [binData]);
             useEffect(() => { localStorage.setItem('vfx_binFilePath', binFilePath); }, [binFilePath]);
 
-            const parseEDL = (edlText) => {
+            const parseEDL = (edlText, autoGenerate = true) => {
                 const lines = edlText.split('\n');
                 const edlData = { edl_metadata: { edl_title: '', edl_fcm: '' }, events: [] };
                 let lastEvent = null, lastScene = 0, vfxCounter = 0;
@@ -82,13 +82,13 @@
                         if (sourceValue && sourceValue.length > lastEvent.reel.length) {
                             lastEvent.reel = sourceValue;
                         }
-                        if (!lastEvent.LOC && !lastEvent['VFX ID']) {
-                            const match = lastEvent.FROM.match(/\d+/);
-                            if (match) {
-                                const scene = match[0].padStart(3, '0');
-                                vfxCounter = (scene === lastScene) ? vfxCounter + 10 : 10;
+                        const match = lastEvent.FROM.match(/\d+/);
+                        if (match) {
+                            const scene = match[0].padStart(3, '0');
+                            vfxCounter = (scene === lastScene) ? vfxCounter + 10 : 10;
+                            lastScene = scene;
+                            if (autoGenerate && !lastEvent.LOC && !lastEvent['VFX ID']) {
                                 lastEvent['VFX ID'] = `${filmId}_${scene}_${String(vfxCounter).padStart(3, '0')}`;
-                                lastScene = scene;
                             }
                         }
                     }
@@ -111,26 +111,39 @@
                 if (ext !== '.edl') { setStatus('Error: Invalid file type. Please upload an EDL file (.edl)'); return; }
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const parsed = parseEDL(e.target.result);
+                    const parsed = parseEDL(e.target.result, !edlData);
                     const fname = file.name.replace(/\.[^/.]+$/, '');
                     parsed.edl_metadata.edl_filename = fname;
                     if (!parsed.edl_metadata.edl_title?.trim()) parsed.edl_metadata.edl_title = fname;
 
                     // Compare with cached EDL data
                     const cachedEdl = edlData;
-                    let newCount = 0, removedCount = 0;
+                    let newCount = 0, removedCount = 0, reelMismatchCount = 0;
 
                     if (cachedEdl && cachedEdl.events) {
-                        const cachedVfxIds = new Set(cachedEdl.events.filter(e => e.changeStatus !== 'removed').map(e => e['VFX ID']));
-                        const newVfxIds = new Set(parsed.events.map(e => e['VFX ID']));
+                        const cachedActive = cachedEdl.events.filter(e => e.changeStatus !== 'removed');
+                        const cachedVfxIds = new Set(cachedActive.map(e => e['VFX ID']));
+                        const newVfxIds = new Set(parsed.events.filter(e => e['VFX ID']).map(e => e['VFX ID']));
 
-                        // Mark new events
-                        parsed.events.forEach(e => {
+                        // Build lookup of cached events by reel+sourceIn for matching no-ID clips
+                        const cachedByReelTC = new Map();
+                        cachedActive.forEach(ce => cachedByReelTC.set(`${ce.reel}|${ce.source_start_TC}`, ce));
+
+                        // Track cached IDs accounted for by a no-ID clip (clip exists, lost marker)
+                        const accountedCachedIds = new Set();
+
+                        // Pass 1: events WITH a VFX ID
+                        parsed.events.filter(e => e['VFX ID']).forEach(e => {
                             if (!cachedVfxIds.has(e['VFX ID'])) {
                                 e.changeStatus = 'new';
                                 newCount++;
                             } else {
-                                const cachedEvent = cachedEdl.events.find(ce => ce['VFX ID'] === e['VFX ID'] && ce.changeStatus !== 'removed');
+                                const cachedEvent = cachedActive.find(ce => ce['VFX ID'] === e['VFX ID']);
+                                if (cachedEvent && e.reel !== cachedEvent.reel) {
+                                    e.reelMismatch = true;
+                                    e.prevReel = cachedEvent.reel;
+                                    reelMismatchCount++;
+                                }
                                 if (cachedEvent && (e.source_start_TC !== cachedEvent.source_start_TC || e.source_end_TC !== cachedEvent.source_end_TC)) {
                                     const fr = parseInt(fps);
                                     const newIn = parseTimecode(e.source_start_TC, fr);
@@ -146,24 +159,40 @@
                             }
                         });
 
-                        // Add removed events from cache
-                        cachedEdl.events.filter(e => e.changeStatus !== 'removed').forEach(cachedEvent => {
-                            if (!newVfxIds.has(cachedEvent['VFX ID'])) {
+                        // Pass 2: events WITHOUT a VFX ID — match by reel + source_start_TC
+                        parsed.events.filter(e => !e['VFX ID']).forEach(e => {
+                            e.changeStatus = 'missing_id';
+                            const cachedEvent = cachedByReelTC.get(`${e.reel}|${e.source_start_TC}`);
+                            if (cachedEvent && cachedEvent['VFX ID']) {
+                                e.prevVfxId = cachedEvent['VFX ID'];
+                                accountedCachedIds.add(cachedEvent['VFX ID']);
+                            }
+                        });
+
+                        // Add truly removed events (not matched by VFX ID and not matched by reel+TC)
+                        cachedActive.forEach(cachedEvent => {
+                            if (!newVfxIds.has(cachedEvent['VFX ID']) && !accountedCachedIds.has(cachedEvent['VFX ID'])) {
                                 parsed.events.push({ ...cachedEvent, changeStatus: 'removed' });
                                 removedCount++;
                             }
                         });
+                    } else {
+                        // No cached data — just flag clips with no VFX ID
+                        parsed.events.filter(e => !e['VFX ID']).forEach(e => { e.changeStatus = 'missing_id'; });
                     }
 
                     setEdlData(parsed);
                     setEdlFilePath(file.name);
                     const trimmedOkCount = parsed.events.filter(e => e.changeStatus === 'trimmed_ok').length;
                     const trimmedPullCount = parsed.events.filter(e => e.changeStatus === 'trimmed_pull').length;
+                    const missingIdCount = parsed.events.filter(e => e.changeStatus === 'missing_id').length;
                     const statusParts = [`EDL loaded: ${parsed.events.filter(e => e.changeStatus !== 'removed').length} events`];
                     if (newCount > 0) statusParts.push(`${newCount} new`);
                     if (removedCount > 0) statusParts.push(`${removedCount} removed`);
                     if (trimmedOkCount > 0) statusParts.push(`${trimmedOkCount} changed (no pull)`);
                     if (trimmedPullCount > 0) statusParts.push(`${trimmedPullCount} need pull`);
+                    if (reelMismatchCount > 0) statusParts.push(`WARNING: ${reelMismatchCount} reel mismatch`);
+                    if (missingIdCount > 0) statusParts.push(`WARNING: ${missingIdCount} missing VFX ID`);
                     setStatus(statusParts.join(', '));
                 };
                 reader.readAsText(file);
@@ -390,8 +419,23 @@
                                                     {edlData.events.some(e => e.changeStatus === 'removed') && <span className="ml-2 text-red-400">-{edlData.events.filter(e => e.changeStatus === 'removed').length} removed</span>}
                                                     {edlData.events.some(e => e.changeStatus === 'trimmed_ok') && <span className="ml-2 text-yellow-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_ok').length} changed (no pull)</span>}
                                                     {edlData.events.some(e => e.changeStatus === 'trimmed_pull') && <span className="ml-2 text-orange-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_pull').length} need pull</span>}
+                                                    {edlData.events.some(e => e.changeStatus === 'missing_id') && <span className="ml-2 text-purple-400">{edlData.events.filter(e => e.changeStatus === 'missing_id').length} missing VFX ID</span>}
                                                 </p>
                                             </div>
+                                            {edlData.events.some(e => e.changeStatus === 'missing_id') && (
+                                                <div className="bg-purple-900/20 border border-purple-800 rounded-lg p-3 mb-3 text-xs">
+                                                    <span className="text-purple-400 font-semibold uppercase">Missing VFX ID — </span>
+                                                    <span className="text-purple-300">the following clips have no VFX ID assigned: </span>
+                                                    <span className="text-purple-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'missing_id').map(e => `event ${e.event_number}${e.reel ? ` (${e.reel})` : ''}${e.prevVfxId ? ` — was: ${e.prevVfxId}` : ''}`).join(', ')}</span>
+                                                </div>
+                                            )}
+                                            {edlData.events.some(e => e.reelMismatch) && (
+                                                <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 mb-3 text-xs">
+                                                    <span className="text-red-400 font-semibold uppercase">Reel mismatch — </span>
+                                                    <span className="text-red-300">the following VFX IDs have a different reel than the previous version: </span>
+                                                    <span className="text-red-400 font-mono">{edlData.events.filter(e => e.reelMismatch).map(e => e['VFX ID']).join(', ')}</span>
+                                                </div>
+                                            )}
                                             <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
                                                 <table className="w-full text-xs">
                                                     <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0">
@@ -399,16 +443,17 @@
                                                     </thead>
                                                     <tbody className="text-gray-300">
                                                         {[...edlData.events].sort((a, b) => a['VFX ID'].localeCompare(b['VFX ID'])).map((e, i) => (
-                                                            <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : ''}`}>
+                                                            <tr key={i} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 ${e.changeStatus === 'missing_id' ? 'border-l-2 border-l-purple-500' : e.reelMismatch ? 'border-l-2 border-l-red-500' : ''} ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : e.changeStatus === 'missing_id' ? 'bg-purple-900/20' : ''}`}>
                                                                 <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
-                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID']}</td>
+                                                                <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'missing_id' ? 'text-purple-400 font-semibold italic' : e.reelMismatch ? 'text-red-400 font-semibold' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID'] || '[NO ID]'}{e.changeStatus === 'missing_id' && e.prevVfxId && <span className="ml-1 text-purple-500 font-normal not-italic text-xs">(was: {e.prevVfxId})</span>}</td>
                                                                 <td className="px-3 py-2 text-xs">
                                                                     {e.changeStatus === 'new' && <span className="text-green-400 font-medium">NEW - NEED TO PULL</span>}
                                                                     {e.changeStatus === 'removed' && <span className="text-red-400 font-medium">REMOVED</span>}
                                                                     {e.changeStatus === 'trimmed_ok' && <span className="text-yellow-400 font-medium">TRIMMED BUT NO NEED TO PULL</span>}
                                                                     {e.changeStatus === 'trimmed_pull' && <span className="text-orange-400 font-medium">TRIMMED - NEED TO PULL</span>}
+                                                                    {e.changeStatus === 'missing_id' && <span className="text-purple-400 font-medium">MISSING VFX ID</span>}
                                                                 </td>
-                                                                <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.reel}</td>
+                                                                <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.reelMismatch ? 'text-red-400 font-semibold' : ''}`}>{e.reel}{e.reelMismatch && <span className="ml-1 text-red-500 font-normal">(was: {e.prevReel})</span>}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_start_TC !== e.prevSourceIn ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_start_TC !== e.prevSourceIn ? 'text-yellow-400' : ''}`}>{e.source_start_TC}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_end_TC !== e.prevSourceOut ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_end_TC !== e.prevSourceOut ? 'text-yellow-400' : ''}`}>{e.source_end_TC}</td>
                                                                 <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_start_TC}</td>
