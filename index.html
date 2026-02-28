@@ -465,7 +465,11 @@
             const loadEdlFromDb = () => {
                 if (!selectedDbKey || !edlDb[selectedDbKey]) return;
                 const entry = edlDb[selectedDbKey];
-                setEdlData(entry.edlData);
+                const cleanData = {
+                    ...entry.edlData,
+                    events: entry.edlData.events.map(({ changeStatus, reelMismatch, prevVfxId, ...e }) => e)
+                };
+                setEdlData(cleanData);
                 setEdlFilePath(selectedDbKey);
                 setStatus(`Loaded from library: ${selectedDbKey}`);
             };
