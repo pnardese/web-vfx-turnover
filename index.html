@@ -280,6 +280,7 @@
             const [edlFilePath, setEdlFilePath] = useState(() => localStorage.getItem('vfx_edlFilePath') || '');
             const [filmId, setFilmId] = useState(() => localStorage.getItem('vfx_filmId') || 'FILM_ID');
             const [fps, setFps] = useState(() => localStorage.getItem('vfx_fps') || '24');
+            const [resolution, setResolution] = useState(() => localStorage.getItem('vfx_resolution') || '1080');
             const [handles, setHandles] = useState(() => { const v = parseInt(localStorage.getItem('vfx_handles')); return isNaN(v) ? 10 : v; });
             const [binData, setBinData] = useState(() => { try { return JSON.parse(localStorage.getItem('vfx_binData')); } catch { return null; } });
             const [binFilePath, setBinFilePath] = useState(() => localStorage.getItem('vfx_binFilePath') || '');
@@ -296,6 +297,7 @@
             // ── Persistence effects ───────────────────────────────────────────────
             useEffect(() => { localStorage.setItem('vfx_filmId', filmId); }, [filmId]);
             useEffect(() => { localStorage.setItem('vfx_fps', fps); }, [fps]);
+            useEffect(() => { localStorage.setItem('vfx_resolution', resolution); }, [resolution]);
             useEffect(() => { if (!isNaN(handles)) localStorage.setItem('vfx_handles', handles); }, [handles]);
             useEffect(() => { localStorage.setItem('vfx_markerUser', markerUser); }, [markerUser]);
             useEffect(() => { localStorage.setItem('vfx_markerTrack', markerTrack); }, [markerTrack]);
@@ -398,7 +400,7 @@
                                     reelMismatchCount++;
                                 }
                                 if (cachedEvent && (e.source_start_TC !== cachedEvent.source_start_TC || e.source_end_TC !== cachedEvent.source_end_TC)) {
-                                    const fr = parseInt(fps);
+                                    const fr = Math.round(parseFloat(fps));
                                     const newIn = parseTimecode(e.source_start_TC, fr);
                                     const newOut = parseTimecode(e.source_end_TC, fr);
                                     const oldIn = parseTimecode(cachedEvent.source_start_TC, fr);
@@ -531,7 +533,7 @@
             const exportMarkers = () => {
                 if (!edlData) return;
                 const bn = edlData.edl_metadata.edl_filename || 'output';
-                const fr = parseInt(fps);
+                const fr = Math.round(parseFloat(fps));
                 downloadFile(getActiveEvents().map(e => {
                     let tc = e.record_start_TC;
                     if (markerPosition === 'middle') {
@@ -552,8 +554,8 @@
 
             const exportALEPulls = () => {
                 if (!edlData) return;
-                const fr = parseInt(fps), bn = edlData.edl_metadata.edl_filename || 'output';
-                let content = `Heading\nFIELD_DELIM\tTABS\nVIDEO_FORMAT\t1080\nAUDIO_FORMAT\t48khz\nFPS\t${fps}\n\nColumn\nName\tTracks\tStart\tEnd\tTape\nData\n\n`;
+                const fr = Math.round(parseFloat(fps)), bn = edlData.edl_metadata.edl_filename || 'output';
+                let content = `Heading\nFIELD_DELIM\tTABS\nVIDEO_FORMAT\t${resolution}\nAUDIO_FORMAT\t48khz\nFPS\t${fps}\n\nColumn\nName\tTracks\tStart\tEnd\tTape\nData\n\n`;
                 getActiveEvents().forEach(e => {
                     content += `${e['VFX ID']}\tV\t${subtractTimecode(e.source_start_TC, handles, fr)}\t${addTimecode(e.source_end_TC, handles, fr)}\t${e.reel}\n`;
                 });
@@ -569,7 +571,7 @@
 
             const exportGoogleTab = () => {
                 if (!edlData) return;
-                const fr = parseInt(fps), bn = edlData.edl_metadata.edl_filename || 'output';
+                const fr = Math.round(parseFloat(fps)), bn = edlData.edl_metadata.edl_filename || 'output';
                 let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
                 getActiveEvents().forEach((e, i) => {
                     const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
@@ -580,7 +582,7 @@
 
             const exportChangelist = () => {
                 if (!edlData) return;
-                const fr = parseInt(fps), bn = edlData.edl_metadata.edl_filename || 'output';
+                const fr = Math.round(parseFloat(fps)), bn = edlData.edl_metadata.edl_filename || 'output';
                 const statusLabel = { new: 'NEW', removed: 'REMOVED', trimmed_ok: 'CHANGED - NO PULL NEEDED', trimmed_pull: 'NEED PULL', unchanged: '' };
                 let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
                 edlData.events.forEach((e, i) => {
@@ -625,13 +627,25 @@
                             <div key={currentPage} className="page-enter">
                             {currentPage === 'main' && (
                                 <>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                        {[['Film ID', filmId, setFilmId, 'text'], ['FPS', fps, setFps, 'text'], ['Pull Handles', handles, setHandles, 'number']].map(([label, val, setter, type]) => (
-                                            <div key={label}>
-                                                <label className="block text-xs font-medium text-[#14b8a6] mb-1 uppercase">{label}</label>
-                                                <input type={type} value={val} onChange={(e) => setter(type === 'number' ? parseInt(e.target.value) : e.target.value)} className="w-full px-3 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
-                                            </div>
-                                        ))}
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                        <div>
+                                            <label className="block text-xs font-medium text-[#14b8a6] mb-1 uppercase">Film ID</label>
+                                            <input type="text" value={filmId} onChange={(e) => setFilmId(e.target.value)} className="w-full px-3 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-[#14b8a6] mb-1 uppercase">FPS</label>
+                                            <select value={fps} onChange={(e) => setFps(e.target.value)} className="w-full px-3 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6] cursor-pointer">
+                                                {['23.976', '24', '25', '29.97'].map(f => <option key={f} value={f}>{f}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-[#14b8a6] mb-1 uppercase italic">Resolution</label>
+                                            <input type="text" value={resolution} onChange={(e) => setResolution(e.target.value)} className="w-full px-3 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-[#14b8a6] mb-1 uppercase">Pull Handles</label>
+                                            <input type="number" value={handles} onChange={(e) => setHandles(parseInt(e.target.value))} className="w-full px-3 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
+                                        </div>
                                     </div>
 
                                     {status && <div className={`border rounded-lg p-3 text-sm mb-6 flex items-center gap-2 ${status.startsWith('Error') ? 'bg-red-900/20 border-red-800 text-red-400' : 'bg-[#14b8a6]/10 border-[#14b8a6]/30 text-[#14b8a6]'}`}><span className={`status-dot ${status.startsWith('Error') ? 'status-dot-error' : 'status-dot-online'}`}></span>{status}</div>}
