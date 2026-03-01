@@ -86,14 +86,15 @@ Relink imported EDL to mov files like in Pulls EDL.
 | Setting | Description | Default |
 |---------|-------------|---------|
 | Film ID | Project identifier used in VFX IDs | FILM_ID |
-| FPS | Frame rate for timecode calculations | 24 |
+| FPS | Frame rate for timecode calculations — dropdown: 23.976, 24, 25, 29.97 | 24 |
+| Resolution | Video format written to ALE `VIDEO_FORMAT` header | 1080 |
 | Pull Handles | Extra frames added to pulls | 10 |
 
 ## Data Persistence
 
 All settings and loaded file data are automatically saved to your browser's local storage:
 
-- **Settings** - Film ID, FPS, Pull Handles, Marker User, Position, Track, and Color
+- **Settings** - Film ID, FPS, Resolution, Pull Handles, Marker User, Position, Track, and Color
 - **Loaded Files** - EDL and AVID Bin file data persist across browser sessions
 - **File Names** - The names of loaded files are displayed in the upload zones and preview sections
 
