@@ -42,6 +42,8 @@ Export markers from Avid as JPGs to use them to build a VFX Shots database.
 
 ![Export settings for frame extraction at marker's position](imgs/02_export_frames.png)
 
+If you use **Google Sheets** to manage your VFX database, you can automatically import the exported frame images into your sheet using [insertShotImages](https://github.com/pnardese/insertShotImages) — a companion script that reads the exported JPGs and inserts them into the corresponding rows of your Google Sheet.
+
 ### 4. Export TAB Text Files
 
 Export TAB text files with VFX IDs info, that can be imported in any database/spreadsheet to build a VFX shot database.
