@@ -10,7 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,200;1,700&family=Source+Code+Pro:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,200;1,700&family=Barlow+Condensed:ital,wght@1,800&family=Barlow:wght@300&family=Source+Code+Pro:wght@500&display=swap" rel="stylesheet">
     <style>
         /* Root sits above shader canvas */
         body  { background: #0a0f14; }
@@ -110,7 +110,7 @@
                     </label>
                 </div>
                 {onClear && (
-                    <button onClick={onClear} className="px-2 py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-lg text-xs transition flex flex-col items-center self-center" title={`Clear ${clearLabel}`}>
+                    <button onClick={onClear} className="px-2 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 rounded-lg text-xs transition flex flex-col items-center justify-center self-stretch" title={`Clear ${clearLabel}`}>
                         <span>{clearLabel} Clear</span>
                         <svg className="w-4 h-4 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
@@ -290,6 +290,8 @@
             const [markerTrack, setMarkerTrack] = useState(() => localStorage.getItem('vfx_markerTrack') || 'V1');
             const [markerColor, setMarkerColor] = useState(() => localStorage.getItem('vfx_markerColor') || 'green');
             const [markerPosition, setMarkerPosition] = useState(() => localStorage.getItem('vfx_markerPosition') || 'start');
+            const [edlDb, setEdlDb] = useState(() => { try { return JSON.parse(localStorage.getItem('vfx_edl_db')) || {}; } catch { return {}; } });
+            const [selectedDbKey, setSelectedDbKey] = useState('');
 
             // ── Persistence effects ───────────────────────────────────────────────
             useEffect(() => { localStorage.setItem('vfx_filmId', filmId); }, [filmId]);
@@ -303,6 +305,7 @@
             useEffect(() => { localStorage.setItem('vfx_edlFilePath', edlFilePath); }, [edlFilePath]);
             useEffect(() => { if (binData) localStorage.setItem('vfx_binData', JSON.stringify(binData)); else localStorage.removeItem('vfx_binData'); }, [binData]);
             useEffect(() => { localStorage.setItem('vfx_binFilePath', binFilePath); }, [binFilePath]);
+            useEffect(() => { if (edlDb && Object.keys(edlDb).length > 0) localStorage.setItem('vfx_edl_db', JSON.stringify(edlDb)); else localStorage.removeItem('vfx_edl_db'); }, [edlDb]);
 
             // ── EDL parsing ───────────────────────────────────────────────────────
             const parseEDL = (edlText, autoGenerate = true) => {
@@ -432,6 +435,7 @@
                     }
 
                     setEdlData(parsed);
+                    saveEdlToDb(file.name, parsed);
                     setEdlFilePath(file.name);
                     const trimmedOkCount = parsed.events.filter(e => e.changeStatus === 'trimmed_ok').length;
                     const trimmedPullCount = parsed.events.filter(e => e.changeStatus === 'trimmed_pull').length;
@@ -452,6 +456,36 @@
                 setEdlData(null);
                 setEdlFilePath('');
                 setStatus('EDL data cleared');
+            };
+
+            const saveEdlToDb = (filename, data) => {
+                setEdlDb(prev => ({ ...prev, [filename]: { edlData: data, savedAt: new Date().toISOString() } }));
+            };
+
+            const loadEdlFromDb = () => {
+                if (!selectedDbKey || !edlDb[selectedDbKey]) return;
+                const entry = edlDb[selectedDbKey];
+                const cleanData = {
+                    ...entry.edlData,
+                    events: entry.edlData.events.map(({ changeStatus, reelMismatch, prevVfxId, ...e }) => e)
+                };
+                setEdlData(cleanData);
+                setEdlFilePath(selectedDbKey);
+                setStatus(`Loaded from library: ${selectedDbKey}`);
+            };
+
+            const removeEdlFromDb = () => {
+                if (!selectedDbKey) return;
+                const key = selectedDbKey;
+                setEdlDb(prev => { const next = { ...prev }; delete next[key]; return next; });
+                setSelectedDbKey('');
+                setStatus(`Removed from library: ${key}`);
+            };
+
+            const clearEdlDb = () => {
+                setEdlDb({});
+                setSelectedDbKey('');
+                setStatus('EDL library cleared');
             };
 
             const processBinFile = (file) => {
@@ -577,9 +611,9 @@
                     <div className="max-w-6xl mx-auto">
                         <div className="bg-[#0d1318] rounded-xl p-6 border border-[#1a2530]">
                             <div className="pb-5 mb-6 border-b border-[#1a2530]">
-                                <h1 className="title-shimmer mb-1 italic" style={{fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '48px'}}>VFX Turnover Tool</h1>
-                                <p className="text-gray-400 mb-4" style={{fontFamily: 'Inter, sans-serif', fontWeight: 200, fontSize: '20px'}}>Manage VFX Workflow in Avid Media Composer</p>
-                                <div className="flex gap-2">
+                                <h1 className="mb-0 text-white text-right" style={{fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontStyle: 'italic', fontSize: '68px'}}>VFX Turnover Tool</h1>
+                                <p className="text-gray-400 mb-4 text-right" style={{fontFamily: "'Barlow', sans-serif", fontWeight: 300, fontSize: '20px'}}>Manage VFX Workflow in Avid Media Composer</p>
+                                <div className="flex gap-2 justify-end">
                                     {['main', 'info', 'help'].map(p => (
                                         <button key={p} onClick={() => setCurrentPage(p)} className={`px-4 py-2 text-sm rounded-lg transition ${currentPage === p ? 'bg-[#14b8a6] text-[#0a0f14] font-medium btn-teal' : 'bg-[#1a2530] text-gray-300 hover:bg-[#243040] border border-[#2a3545]'}`}>
                                             {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -620,6 +654,47 @@
                                             onClear={edlData ? clearEdlData : null}
                                             clearLabel="EDL"
                                         />
+                                    </div>
+
+                                    {/* EDL Library */}
+                                    <div className="mt-2 mb-6 p-3 rounded-lg border border-[#1a2530] bg-[#0d1318]">
+                                        <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">EDL Library</div>
+                                        {Object.keys(edlDb).length === 0 ? (
+                                            <div className="text-xs text-gray-600 italic">No EDLs saved yet — drop an EDL to add it.</div>
+                                        ) : (
+                                            <>
+                                                <select
+                                                    value={selectedDbKey}
+                                                    onChange={e => setSelectedDbKey(e.target.value)}
+                                                    className="w-full mb-2 bg-[#0a0f14] border border-[#1a2530] text-gray-300 text-xs rounded px-2 py-1 focus:outline-none focus:border-[#14b8a6]"
+                                                >
+                                                    <option value="">— select an EDL —</option>
+                                                    {Object.entries(edlDb)
+                                                        .sort((a, b) => new Date(b[1].savedAt) - new Date(a[1].savedAt))
+                                                        .map(([key, val]) => (
+                                                            <option key={key} value={key}>
+                                                                {key}  ({new Date(val.savedAt).toLocaleDateString()})
+                                                            </option>
+                                                        ))}
+                                                </select>
+                                                <div className="flex gap-2 flex-wrap">
+                                                    <button
+                                                        onClick={loadEdlFromDb}
+                                                        disabled={!selectedDbKey}
+                                                        className="btn-teal px-3 py-1 text-xs rounded border border-[#14b8a6] text-[#14b8a6] bg-transparent disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    >Load</button>
+                                                    <button
+                                                        onClick={removeEdlFromDb}
+                                                        disabled={!selectedDbKey}
+                                                        className="px-3 py-1 text-xs rounded border border-red-800 text-red-400 bg-red-900/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    >Remove from Library</button>
+                                                    <button
+                                                        onClick={clearEdlDb}
+                                                        className="px-3 py-1 text-xs rounded border border-gray-700 text-gray-500 bg-transparent hover:text-red-400 hover:border-red-800"
+                                                    >Clear All</button>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
 
                                     <div className="mb-6">
