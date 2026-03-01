@@ -30,6 +30,8 @@ Existing markers on timeline are imported into the tool as existing VFX IDs (you
 
 ![Configuration of the list tool in Avid Media Composer for EDL exporting](imgs/01_create_edl.png)
 
+Once exported, load the `.edl` file into the tool by **dragging and dropping it** onto the drop zone in the main window, or clicking the drop zone to **browse your local disk**.
+
 ### 2. Export Markers and Subcaps
 
 Export markers and subcaps and import them into Avid to help keep track of VFXs.
