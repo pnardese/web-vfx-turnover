@@ -1,4 +1,4 @@
-# VFX Turnover Tool v0.1
+# VFX Turnover Tool v0.2
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
