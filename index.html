@@ -78,6 +78,33 @@
 <body style="font-family: 'Source Code Pro', monospace; font-weight: 500; font-size: 20px;">
     <canvas id="bg-shader" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block;"></canvas>
     <div id="root"></div>
+    <script>
+    window.VFXLog = (() => {
+        const MAX = 300;
+        const entries = [];
+        function log(category, message, data) {
+            const entry = { ts: new Date().toISOString(), category, message, data: data ?? null };
+            entries.push(entry);
+            if (entries.length > MAX) entries.shift();
+            const line = `[${entry.ts}] [${category}] ${message}`;
+            console.log(data ? line + ' ' + JSON.stringify(data) : line);
+        }
+        return {
+            log,
+            getEntries: () => [...entries],
+            clear: () => { entries.length = 0; },
+            format: () => entries.map(e =>
+                `[${e.ts}] [${e.category}] ${e.message}` + (e.data ? ' ' + JSON.stringify(e.data) : '')
+            ).join('\n')
+        };
+    })();
+
+    window.onerror = (msg, src, line, col, err) =>
+        window.VFXLog.log('ERROR', msg, { src, line, col, stack: err?.stack ?? null });
+
+    window.onunhandledrejection = e =>
+        window.VFXLog.log('ERROR', 'Unhandled rejection', { reason: String(e.reason) });
+    </script>
     <script type="text/babel">
         const { useState, useEffect } = React;
 
@@ -119,11 +146,16 @@
         );
 
         // ─── EDLPreview ───────────────────────────────────────────────────────────
-        const EDLPreview = ({ edlData, edlFilePath, onExportChangelist }) => (
+        const EDLPreview = ({ edlData, edlFilePath, onExportChangelist, onClearChangelist }) => {
+            const hasChangelist = edlData.events.some(e => ['new','removed','trimmed_ok','trimmed_pull'].includes(e.changeStatus));
+            return (
             <div className="bg-[#0a0f14] border border-[#1a2530] rounded-xl p-4 mb-6">
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="text-xs font-medium text-[#14b8a6] uppercase">Preview</h3>
-                    <button onClick={onExportChangelist} className="px-3 py-1 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium rounded-lg text-xs transition btn-teal">Export Changelist</button>
+                    <div className="flex gap-2">
+                        {hasChangelist && <button onClick={onClearChangelist} className="px-3 py-1 rounded-lg text-xs border border-gray-600 text-gray-400 bg-transparent hover:border-gray-400 hover:text-white transition">Clear changelist</button>}
+                        <button onClick={onExportChangelist} className="px-3 py-1 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium rounded-lg text-xs transition btn-teal">Export Changelist</button>
+                    </div>
                 </div>
                 <div className="text-sm text-gray-300 space-y-1 mb-4">
                     <p><span className="font-medium text-white">File:</span> {edlFilePath || `${edlData.edl_metadata.edl_filename}.edl`}</p>
@@ -178,7 +210,8 @@
                     </table>
                 </div>
             </div>
-        );
+            );
+        };
 
         // ─── InfoPage ─────────────────────────────────────────────────────────────
         const InfoPage = () => (
@@ -362,6 +395,8 @@
                         }
                     }
                 }
+                const fps_detected = edlData.edl_metadata.edl_fcm ? edlData.edl_metadata.edl_fcm : 'unknown';
+                window.VFXLog.log('PARSE', 'EDL parsed', { shots: edlData.events.length, fcm: fps_detected });
                 return edlData;
             };
 
@@ -369,6 +404,7 @@
             const processEDLFile = (file) => {
                 const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
                 if (ext !== '.edl') { setStatus('Error: Invalid file type. Please upload an EDL file (.edl)'); return; }
+                window.VFXLog.log('FILE', 'EDL file loaded', { name: file.name, size: file.size });
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const parsed = parseEDL(e.target.result, !edlData);
@@ -381,6 +417,7 @@
                     let newCount = 0, removedCount = 0, reelMismatchCount = 0;
 
                     if (cachedEdl && cachedEdl.events) {
+                        parsed.edl_metadata.prevEdlFilename = edlFilePath;
                         const cachedActive = cachedEdl.events.filter(e => e.changeStatus !== 'removed');
                         const cachedVfxIds = new Set(cachedActive.map(e => e['VFX ID']));
                         const newVfxIds = new Set(parsed.events.filter(e => e['VFX ID']).map(e => e['VFX ID']));
@@ -486,7 +523,38 @@
                 const key = selectedDbKey;
                 setEdlDb(prev => { const next = { ...prev }; delete next[key]; return next; });
                 setSelectedDbKey('');
-                setStatus(`Removed from library: ${key}`);
+                if (key === edlFilePath) {
+                    const prevFilename = edlData?.edl_metadata?.prevEdlFilename;
+                    if (prevFilename && prevFilename !== key && edlDb[prevFilename]) {
+                        const entry = edlDb[prevFilename];
+                        const cleanData = {
+                            ...entry.edlData,
+                            events: entry.edlData.events.map(({ changeStatus, reelMismatch, prevVfxId, ...e }) => e)
+                        };
+                        setEdlData(cleanData);
+                        setEdlFilePath(prevFilename);
+                        setStatus(`Removed from library: ${key}`);
+                    } else {
+                        clearEdlData();
+                    }
+                } else {
+                    setStatus(`Removed from library: ${key}`);
+                }
+            };
+
+            const clearChangelist = () => {
+                if (!edlData) return;
+                const prevFilename = edlData?.edl_metadata?.prevEdlFilename;
+                if (prevFilename && prevFilename !== edlFilePath && edlDb[prevFilename]) {
+                    const entry = edlDb[prevFilename];
+                    const cleanData = {
+                        ...entry.edlData,
+                        events: entry.edlData.events.map(({ changeStatus, reelMismatch, prevVfxId, prevSourceIn, prevSourceOut, prevReel, ...e }) => e)
+                    };
+                    setEdlData(cleanData);
+                    setEdlFilePath(prevFilename);
+                    setStatus('Changelist cleared');
+                }
             };
 
             const clearEdlDb = () => {
@@ -537,6 +605,7 @@
             // ── Export functions ──────────────────────────────────────────────────
             const exportMarkers = () => {
                 if (!edlData) return;
+                window.VFXLog.log('EXPORT', 'exportMarkers', { count: getActiveEvents().length });
                 const bn = edlData.edl_metadata.edl_filename || 'output';
                 const fr = Math.round(parseFloat(fps));
                 downloadFile(getActiveEvents().map(e => {
@@ -552,6 +621,7 @@
 
             const exportSubcaps = () => {
                 if (!edlData) return;
+                window.VFXLog.log('EXPORT', 'exportSubcaps', { count: getActiveEvents().length });
                 const bn = edlData.edl_metadata.edl_filename || 'output';
                 const content = '<begin subtitles>\n' + getActiveEvents().map(e => `${e.record_start_TC} ${e.record_end_TC}\n${e['VFX ID']}\n`).join('\n') + '\n<end subtitles>\n';
                 downloadFile(content, `${bn}_subcaps.txt`);
@@ -559,6 +629,7 @@
 
             const exportALEPulls = () => {
                 if (!edlData) return;
+                window.VFXLog.log('EXPORT', 'exportALEPulls', { count: getActiveEvents().length, fps });
                 const fr = Math.round(parseFloat(fps)), bn = edlData.edl_metadata.edl_filename || 'output';
                 let content = `Heading\nFIELD_DELIM\tTABS\nVIDEO_FORMAT\t${resolution}\nAUDIO_FORMAT\t48khz\nFPS\t${fps}\n\nColumn\nName\tTracks\tStart\tEnd\tTape\nData\n\n`;
                 getActiveEvents().forEach(e => {
@@ -569,6 +640,7 @@
 
             const exportPullsEDL = () => {
                 if (!edlData) return;
+                window.VFXLog.log('EXPORT', 'exportPullsEDL', { count: getActiveEvents().length });
                 const bn = edlData.edl_metadata.edl_filename || 'output';
                 const content = `TITLE: ${bn}_pulls\nFCM: NON-DROP FRAME\n` + getActiveEvents().map(e => `${e.event_number} ${e['VFX ID']} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}`).join('\n');
                 downloadFile(content, `${bn}_pulls.edl`);
@@ -576,6 +648,7 @@
 
             const exportGoogleTab = () => {
                 if (!edlData) return;
+                window.VFXLog.log('EXPORT', 'exportGoogleTab', { count: getActiveEvents().length });
                 const fr = Math.round(parseFloat(fps)), bn = edlData.edl_metadata.edl_filename || 'output';
                 let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
                 getActiveEvents().forEach((e, i) => {
@@ -587,6 +660,8 @@
 
             const exportChangelist = () => {
                 if (!edlData) return;
+                const changeEvents = edlData.events.filter(e => e.changeStatus && e.changeStatus !== 'unchanged');
+                window.VFXLog.log('EXPORT', 'exportChangelist', { count: changeEvents.length });
                 const fr = Math.round(parseFloat(fps)), bn = edlData.edl_metadata.edl_filename || 'output';
                 const statusLabel = { new: 'NEW', removed: 'REMOVED', trimmed_ok: 'CHANGED - NO PULL NEEDED', trimmed_pull: 'NEED PULL', unchanged: '' };
                 let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
@@ -750,7 +825,7 @@
                                         </div>
                                     </div>
 
-                                    {edlData && <EDLPreview edlData={edlData} edlFilePath={edlFilePath} onExportChangelist={exportChangelist} />}
+                                    {edlData && <EDLPreview edlData={edlData} edlFilePath={edlFilePath} onExportChangelist={exportChangelist} onClearChangelist={clearChangelist} />}
 
                                     <div className="pt-6 border-t border-[#1a2530]">
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Incoming VFX EDL</h2>
@@ -877,6 +952,125 @@
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                 requestAnimationFrame(frame);
             })();
+
+            // ── VFX Log panel (Ctrl+Shift+L) ─────────────────────────────────
+            var logPanel = null;
+            function buildLogPanel() {
+                var panel = document.createElement('div');
+                panel.id = 'vfx-log-panel';
+                panel.style.cssText = [
+                    'position:fixed;top:0;right:0;width:680px;max-width:100vw;height:100vh',
+                    'background:#0d1318;border-left:1px solid #1a2530;z-index:9999',
+                    'display:flex;flex-direction:column;font-family:"Source Code Pro",monospace',
+                    'font-size:11px;color:#94a3b8;box-shadow:-4px 0 24px rgba(0,0,0,0.6)'
+                ].join(';');
+
+                // Header
+                var hdr = document.createElement('div');
+                hdr.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #1a2530;flex-shrink:0;';
+                var title = document.createElement('span');
+                title.textContent = 'VFX Log';
+                title.style.cssText = 'color:#14b8a6;font-weight:700;font-size:13px;flex:1;letter-spacing:0.05em;';
+                hdr.appendChild(title);
+
+                function mkBtn(label, action) {
+                    var b = document.createElement('button');
+                    b.textContent = label;
+                    b.style.cssText = [
+                        'padding:3px 10px;border:1px solid #1a2530;border-radius:4px',
+                        'background:#0a0f14;color:#94a3b8;cursor:pointer;font-size:11px',
+                        'font-family:inherit;transition:border-color 0.15s,color 0.15s'
+                    ].join(';');
+                    b.addEventListener('mouseover', function() { b.style.borderColor='#14b8a6'; b.style.color='#14b8a6'; });
+                    b.addEventListener('mouseout',  function() { b.style.borderColor='#1a2530'; b.style.color='#94a3b8'; });
+                    b.addEventListener('click', action);
+                    return b;
+                }
+
+                hdr.appendChild(mkBtn('Copy', function() {
+                    navigator.clipboard.writeText(window.VFXLog.format()).catch(function(){});
+                }));
+                hdr.appendChild(mkBtn('Download', function() {
+                    var d = new Date().toISOString().slice(0,10);
+                    var blob = new Blob([window.VFXLog.format()], { type: 'text/plain' });
+                    var a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = 'vfx-log-' + d + '.txt';
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                }));
+                hdr.appendChild(mkBtn('Clear', function() {
+                    window.VFXLog.clear();
+                    refreshBody();
+                }));
+                var closeBtn = mkBtn('×', function() {
+                    panel.remove();
+                    logPanel = null;
+                });
+                closeBtn.style.cssText += ';font-size:16px;padding:1px 8px;';
+                hdr.appendChild(closeBtn);
+                panel.appendChild(hdr);
+
+                // Body
+                var body = document.createElement('div');
+                body.id = 'vfx-log-body';
+                body.style.cssText = 'flex:1;overflow-y:auto;padding:8px 0;';
+                panel.appendChild(body);
+
+                var catColor = { ERROR: '#f87171', WARN: '#fbbf24', PARSE: '#38bdf8', FILE: '#a78bfa', EXPORT: '#86efac' };
+
+                function refreshBody() {
+                    body.innerHTML = '';
+                    var entries = window.VFXLog.getEntries();
+                    if (!entries.length) {
+                        var empty = document.createElement('div');
+                        empty.textContent = 'No log entries';
+                        empty.style.cssText = 'color:#374151;padding:16px 14px;font-style:italic;';
+                        body.appendChild(empty);
+                        return;
+                    }
+                    entries.forEach(function(e) {
+                        var row = document.createElement('div');
+                        row.style.cssText = 'display:flex;gap:8px;padding:3px 14px;line-height:1.5;border-bottom:1px solid rgba(26,37,48,0.4);';
+                        row.addEventListener('mouseover', function() { row.style.background='rgba(20,184,166,0.05)'; });
+                        row.addEventListener('mouseout',  function() { row.style.background=''; });
+
+                        var ts = document.createElement('span');
+                        ts.textContent = e.ts.slice(11,23); // HH:MM:SS.mmm
+                        ts.style.cssText = 'color:#374151;flex-shrink:0;';
+
+                        var cat = document.createElement('span');
+                        cat.textContent = e.category;
+                        cat.style.cssText = 'color:' + (catColor[e.category] || '#94a3b8') + ';flex-shrink:0;width:46px;';
+
+                        var msg = document.createElement('span');
+                        msg.textContent = e.message + (e.data ? ' ' + JSON.stringify(e.data) : '');
+                        msg.style.cssText = 'color:#94a3b8;word-break:break-all;';
+
+                        row.appendChild(ts);
+                        row.appendChild(cat);
+                        row.appendChild(msg);
+                        body.appendChild(row);
+                    });
+                    body.scrollTop = body.scrollHeight;
+                }
+
+                refreshBody();
+                document.body.appendChild(panel);
+                return panel;
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+                    e.preventDefault();
+                    if (logPanel) {
+                        logPanel.remove();
+                        logPanel = null;
+                    } else {
+                        logPanel = buildLogPanel();
+                    }
+                }
+            });
 
             // ── Button ripple ────────────────────────────────────────────────
             document.addEventListener('click', function (e) {
