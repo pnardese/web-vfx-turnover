@@ -319,6 +319,15 @@
                     <h3 className="text-base font-semibold text-[#14b8a6] mb-2">1. Create EDL from Avid</h3>
                     <p className="mb-3">Create an EDL (File_129 or CMX3600) from the Avid video track containing only shots planned for VFX. In List Options in Avid, check: <strong className="text-white">Clip Names</strong>, <strong className="text-white">Source File Name</strong>, and <strong className="text-white">Markers</strong>.</p>
                     <p className="mb-3">VFX IDs are created automatically based on the following rule: <code className="bg-[#1a2530] px-2 py-1 rounded text-[#14b8a6]">FILM_ID_Scene_num</code>, where num is a progressive number like 010, 020, 030, etc.</p>
+
+                    <div className="bg-[#0a0f14] border border-[#1a2530] rounded-lg p-4 mb-3">
+                        <p className="text-xs font-semibold text-[#14b8a6] uppercase tracking-wider mb-2">How scene numbers are extracted</p>
+                        <p className="mb-2">The EDL contains a comment line for each event with the subclip name, for example:</p>
+                        <pre className="bg-[#0d1318] border border-[#2a3545] rounded px-3 py-2 text-xs text-[#14b8a6] font-mono mb-3 overflow-x-auto">*FROM CLIP NAME:  33-4-/01</pre>
+                        <p className="mb-2">The tool reads the <strong className="text-white">first sequence of digits</strong> in the clip name as the scene number — in this example <code className="bg-[#1a2530] px-1 rounded">33</code>, padded to three digits: <code className="bg-[#1a2530] px-1 rounded">033</code>. The shot counter within that scene starts at <code className="bg-[#1a2530] px-1 rounded">010</code> and increments by 10 for each additional clip in the same scene, giving IDs such as <code className="bg-[#1a2530] px-1 rounded">FILM_ID_033_010</code>, <code className="bg-[#1a2530] px-1 rounded">FILM_ID_033_020</code>, etc.</p>
+                        <p className="text-gray-500 text-xs">This convention assumes a standard feature-film workflow where subclips are named with scene number followed by take information (e.g. <span className="font-mono">33-4-/01</span> = scene 33, shot 4, take 1). If your project uses a different naming convention, assign VFX IDs manually in Avid Media Composer via markers before exporting the EDL.</p>
+                    </div>
+
                     <p className="mb-3">Existing markers on timeline are imported into the tool as existing VFX IDs (you can find them in the EDL as *LOC/* LOC lines). Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs to re-import them correctly into the tool.</p>
                     <img src="imgs/01_create_edl.png" alt="Configuration of the list tool in Avid Media Composer for EDL exporting" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
                     <p className="text-xs text-gray-500 mt-1">Configuration of the list tool in Avid Media Composer for EDL exporting.</p>
@@ -388,7 +397,7 @@
             {
                 targetId: 'tour-edl-drop',
                 title: 'Load EDL',
-                content: 'Drag and drop your EDL file here, or click to browse. Export the EDL from Avid (File_129 or CMX 3600) from the video track containing only VFX shots. Make sure Clip Names, Source File Name, and Markers are enabled in Avid\'s List Options. Once loaded, VFX IDs are generated automatically and the shot list appears in the Preview table below.'
+                content: 'Drag and drop your EDL file here, or click to browse. Export the EDL from Avid (File_129 or CMX 3600) from the video track containing only VFX shots. Make sure Clip Names, Source File Name, and Markers are enabled in Avid\'s List Options. Once loaded, VFX IDs are generated automatically and the shot list appears in the Preview table below.\n\nIf a clip already has a marker in the Avid timeline, its VFX ID is read directly from that marker and is not changed — auto-generation only applies to clips with no marker assigned.'
             },
             {
                 targetId: 'tour-markers-subcaps',
