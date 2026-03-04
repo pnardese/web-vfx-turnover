@@ -63,6 +63,74 @@
 
         /* 5. Status dot pulse */
         .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+        /* 6. Tour button */
+        .tour-fab {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 18px 10px 14px;
+            background: #14b8a6;
+            color: #0a0f14;
+            border: none;
+            border-radius: 999px;
+            font-family: 'Source Code Pro', monospace;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            box-shadow: 0 0 0 0 rgba(20,184,166,0.5);
+            animation: fab-pulse 2.8s ease-in-out infinite;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+        .tour-fab:hover {
+            background: #0d9488;
+            box-shadow: 0 0 20px rgba(20,184,166,0.4);
+            animation: none;
+        }
+        .tour-fab-icon {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            border: 2px solid #0a0f14;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 800; flex-shrink: 0;
+        }
+        @keyframes fab-pulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(20,184,166,0.45); }
+            60%      { box-shadow: 0 0 0 10px rgba(20,184,166,0); }
+        }
+
+        .tour-highlight {
+            position: absolute;
+            border: 2px solid #14b8a6;
+            border-radius: 10px;
+            box-shadow: 0 0 0 9999px rgba(0,0,10,0.62);
+            z-index: 1001;
+            pointer-events: none;
+        }
+        .tour-tooltip {
+            position: absolute;
+            z-index: 1002;
+            background: #0d1318;
+            border: 1px solid #14b8a6;
+            border-radius: 12px;
+            padding: 20px 22px;
+            max-width: 440px;
+            min-width: 280px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.75), 0 0 0 1px rgba(20,184,166,0.15);
+        }
+        .tour-arrow {
+            position: absolute;
+            top: -7px; left: 20px;
+            width: 12px; height: 12px;
+            background: #0d1318;
+            border-left: 1px solid #14b8a6;
+            border-top: 1px solid #14b8a6;
+            transform: rotate(45deg);
+        }
         .status-dot-online { background: #14b8a6; animation: pulse-teal 2s ease-in-out infinite; }
         .status-dot-error  { background: #f87171; animation: pulse-red  1.2s ease-in-out infinite; }
         @keyframes pulse-teal {
@@ -106,7 +174,7 @@
         window.VFXLog.log('ERROR', 'Unhandled rejection', { reason: String(e.reason) });
     </script>
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         // ─── Utility functions ────────────────────────────────────────────────────
         const parseTimecode = (tc, fr) => { const [h,m,s,f] = tc.split(':').map(Number); return h*3600*fr + m*60*fr + s*fr + f; };
@@ -184,7 +252,7 @@
                 )}
                 <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
                     <table className="w-full text-xs">
-                        <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0">
+                        <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0 z-10">
                             <tr>{['#', 'VFX ID', 'Status', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
                         </thead>
                         <tbody className="text-gray-300">
@@ -310,6 +378,124 @@
             </div>
         );
 
+        // ─── Tour ─────────────────────────────────────────────────────────────────
+        const TOUR_STEPS = [
+            {
+                targetId: 'tour-inputs',
+                title: 'Project Settings',
+                content: 'Configure your project before loading any files. Film ID is the prefix used when auto-generating VFX IDs (e.g. FILM_ID_001_010). FPS must match your Avid timeline frame rate. Resolution sets the VIDEO_FORMAT field in exported ALE files. Pull Handles define how many extra frames to add around each clip when building pulls.'
+            },
+            {
+                targetId: 'tour-edl-drop',
+                title: 'Load EDL',
+                content: 'Drag and drop your EDL file here, or click to browse. Export the EDL from Avid (File_129 or CMX 3600) from the video track containing only VFX shots. Make sure Clip Names, Source File Name, and Markers are enabled in Avid\'s List Options. Once loaded, VFX IDs are generated automatically and the shot list appears in the Preview table below.'
+            },
+            {
+                targetId: 'tour-markers-subcaps',
+                title: 'Markers & Subcaps',
+                content: 'Markers exports a text file you can import into Avid to place colour-coded markers at each VFX shot, labelled with their VFX ID. Use User info to set the author field, Position to place the marker at the clip start or midpoint, and Track and Color to target the right video track and marker colour.\n\nSubcaps exports a subtitle file you can load in Avid as sub-captions, so VFX IDs appear as burned-in text on the timeline for easy reference.'
+            },
+            {
+                targetId: 'tour-pulls',
+                title: 'Pulls ALE & Pulls EDL',
+                content: 'Pulls ALE creates an ALE file to import into an Avid bin. After selecting the master clips in the bin, drag the ALE onto it — Avid will create named subclips for each VFX shot using the pull handles you configured. Set the Resolution field to match your project format (e.g. 2160 for 4K).\n\nPulls EDL creates a timeline with the pull subclips. Import the EDL into Avid and relink to the pull subclips by Name.'
+            },
+            {
+                targetId: 'tour-db-export',
+                title: 'DB Export',
+                content: 'Exports a tab-delimited text file with all VFX shot data — ID, duration, source in/out timecodes, frame count, handles, and reel — ready to import into any spreadsheet or database to build your VFX shot list.'
+            },
+            {
+                targetId: 'tour-preview',
+                scrollBlock: 'start',
+                title: 'Preview & Changelist',
+                content: 'The Preview table shows all VFX shots parsed from the EDL, sorted by VFX ID. Each row displays event number, VFX ID, reel, and source and record timecodes.\n\nWhen you load a new EDL over a previously cached one, the tool compares the two versions and colour-codes each row: green for new shots that need a pull, red for removed shots, yellow for trimmed shots already covered by the existing pull, orange for trimmed shots that require a new pull, and purple for clips with no VFX ID assigned.\n\nThe Export Changelist button downloads a tab-delimited file with the same columns as DB Export plus a Status column, so you can import the full changelist into any spreadsheet or database.'
+            },
+            {
+                targetId: 'tour-incoming',
+                scrollBlock: 'bottom',
+                title: 'Incoming VFX EDL',
+                content: 'When you receive incoming VFX deliveries (.mov files), import them into Avid and export the bin as a TAB text file with columns: Color, Name, Duration, Start, End, Tape.\n\nDrop that TAB file here. The tool matches each incoming clip against the loaded EDL by source timecode and generates an EDL you can import into Avid to cut the VFX into the timeline. Relink the imported EDL to the .mov files by Name, the same way as Pulls EDL.'
+            },
+            {
+                targetId: 'tour-edl-library',
+                scrollBlock: 'start',
+                title: 'EDL Library',
+                content: 'Every EDL you drop into the tool is automatically saved to the library. Use the dropdown to select a previous version, then Load to restore it as the active EDL — useful for switching between cuts or reverting to an earlier state.\n\nThe library is the basis for changelist tracking: when you load a new EDL over an existing one, the tool compares it against the currently active version and flags every difference in the Preview table. Remove individual entries or clear the whole library at any time.'
+            }
+        ];
+
+        const Tour = ({ step, onNext, onClose }) => {
+            const [hlPos, setHlPos] = React.useState(null);
+            const [tipPos, setTipPos] = React.useState(null);
+
+            useEffect(() => {
+                if (step === null) return;
+                const def = TOUR_STEPS[step];
+                const ids = def.targetIds || [def.targetId];
+                const els = ids.map(id => document.getElementById(id)).filter(Boolean);
+                if (!els.length) return;
+                const scrollBlock = def.scrollBlock || 'center';
+                if (scrollBlock === 'bottom') {
+                    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+                } else if (scrollBlock === 'start') {
+                    const docTop = els[0].getBoundingClientRect().top + window.scrollY - 20;
+                    window.scrollTo({ top: docTop, behavior: 'smooth' });
+                } else {
+                    els[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+                const update = () => {
+                    // Union bounding box across all target elements
+                    const rects = els.map(el => el.getBoundingClientRect());
+                    const top    = Math.min(...rects.map(r => r.top));
+                    const left   = Math.min(...rects.map(r => r.left));
+                    const right  = Math.max(...rects.map(r => r.right));
+                    const bottom = Math.max(...rects.map(r => r.bottom));
+                    const scrollY = window.scrollY;
+                    const scrollX = window.scrollX;
+                    const pad = 6;
+                    setHlPos({ top: top + scrollY - pad, left: left + scrollX - pad, width: right - left + pad * 2, height: bottom - top + pad * 2 });
+                    const tipW = 440;
+                    let tipLeft = left + scrollX;
+                    if (tipLeft + tipW > window.innerWidth - 12) tipLeft = window.innerWidth - tipW - 12;
+                    setTipPos({ top: bottom + scrollY + 14, left: Math.max(12, tipLeft) });
+                };
+                update();
+                window.addEventListener('resize', update);
+                return () => window.removeEventListener('resize', update);
+            }, [step]);
+
+            if (step === null) return null;
+            const def = TOUR_STEPS[step];
+            const isLast = step === TOUR_STEPS.length - 1;
+
+            return (
+                <>
+                    {hlPos && <div className="tour-highlight" style={hlPos} />}
+                    {tipPos && (
+                        <div className="tour-tooltip page-enter" style={tipPos}>
+                            <div className="tour-arrow" />
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="text-xs text-[#14b8a6] uppercase font-semibold tracking-wider">Step {step + 1} of {TOUR_STEPS.length}</span>
+                                <button onClick={onClose} className="text-xs text-gray-500 hover:text-gray-300 transition">Skip tour</button>
+                            </div>
+                            <h3 className="text-white font-semibold text-base mb-2">{def.title}</h3>
+                            <div className="text-gray-400 text-sm leading-relaxed mb-5 space-y-3">
+                                {def.content.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}
+                            </div>
+                            <button
+                                onClick={isLast ? onClose : onNext}
+                                className="btn-teal w-full px-4 py-2 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium rounded-lg text-sm transition"
+                            >
+                                {isLast ? 'Done' : 'Got it'}
+                            </button>
+                        </div>
+                    )}
+                </>
+            );
+        };
+
         // ─── VFXTurnoverApp ───────────────────────────────────────────────────────
         const VFXTurnoverApp = () => {
             // ── State ─────────────────────────────────────────────────────────────
@@ -331,6 +517,16 @@
             const [markerPosition, setMarkerPosition] = useState(() => localStorage.getItem('vfx_markerPosition') || 'start');
             const [edlDb, setEdlDb] = useState(() => { try { return JSON.parse(localStorage.getItem('vfx_edl_db')) || {}; } catch { return {}; } });
             const [selectedDbKey, setSelectedDbKey] = useState('');
+            const [tourStep, setTourStep] = useState(null);
+            const [markersDropOpen, setMarkersDropOpen] = useState(false);
+            const markersDropRef = useRef(null);
+
+            useEffect(() => {
+                if (!markersDropOpen) return;
+                const handler = (e) => { if (markersDropRef.current && !markersDropRef.current.contains(e.target)) setMarkersDropOpen(false); };
+                document.addEventListener('mousedown', handler);
+                return () => document.removeEventListener('mousedown', handler);
+            }, [markersDropOpen]);
 
             // ── Persistence effects ───────────────────────────────────────────────
             useEffect(() => { localStorage.setItem('vfx_filmId', filmId); }, [filmId]);
@@ -689,13 +885,14 @@
 
             // ── Render ────────────────────────────────────────────────────────────
             return (
+                <>
                 <div className="min-h-screen p-6">
                     <div className="max-w-6xl mx-auto">
                         <div className="bg-[#0d1318] rounded-xl p-6 border border-[#1a2530]">
                             <div className="pb-5 mb-6 border-b border-[#1a2530]">
                                 <h1 className="mb-0 text-white text-right" style={{fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontStyle: 'italic', fontSize: '68px'}}>VFX Turnover Tool</h1>
                                 <p className="text-gray-400 mb-4 text-right" style={{fontFamily: "'Barlow', sans-serif", fontWeight: 300, fontSize: '20px'}}>Manage VFX Workflow in Avid Media Composer</p>
-                                <div className="flex gap-2 justify-end">
+                                <div className="flex gap-2 justify-end items-center">
                                     {['main', 'info', 'help'].map(p => (
                                         <button key={p} onClick={() => setCurrentPage(p)} className={`px-4 py-2 text-sm rounded-lg transition ${currentPage === p ? 'bg-[#14b8a6] text-[#0a0f14] font-medium btn-teal' : 'bg-[#1a2530] text-gray-300 hover:bg-[#243040] border border-[#2a3545]'}`}>
                                             {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -707,7 +904,7 @@
                             <div key={currentPage} className="page-enter">
                             {currentPage === 'main' && (
                                 <>
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                    <div id="tour-inputs" className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                                         <div>
                                             <label className="block text-xs font-medium text-[#14b8a6] mb-1 uppercase">Film ID</label>
                                             <input type="text" value={filmId} onChange={(e) => setFilmId(e.target.value)} className="w-full px-3 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
@@ -730,7 +927,7 @@
 
                                     {status && <div className={`border rounded-lg p-3 text-sm mb-6 flex items-center gap-2 ${status.startsWith('Error') ? 'bg-red-900/20 border-red-800 text-red-400' : 'bg-[#14b8a6]/10 border-[#14b8a6]/30 text-[#14b8a6]'}`}><span className={`status-dot ${status.startsWith('Error') ? 'status-dot-error' : 'status-dot-online'}`}></span>{status}</div>}
 
-                                    <div className="mb-6">
+                                    <div id="tour-edl-drop" className="mb-6">
                                         <DropZone
                                             dragActive={edlDragActive}
                                             onDragEnter={(e) => handleDrag(e, setEdlDragActive, true)}
@@ -751,7 +948,7 @@
                                     </div>
 
                                     {/* EDL Library */}
-                                    <div className="mt-2 mb-6 p-3 rounded-lg border border-[#1a2530] bg-[#0d1318]">
+                                    <div id="tour-edl-library" className="mt-2 mb-6 p-3 rounded-lg border border-[#1a2530] bg-[#0d1318]">
                                         <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">EDL Library</div>
                                         {Object.keys(edlDb).length === 0 ? (
                                             <div className="text-xs text-gray-600 italic">No EDLs saved yet — drop an EDL to add it.</div>
@@ -793,41 +990,63 @@
 
                                     <div className="mb-6">
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Export Options</h2>
-                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 items-end">
-                                            <button onClick={exportMarkers} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">Markers</button>
-                                            <div>
-                                                <label className="block text-xs text-gray-500 mb-1">User info</label>
-                                                <input type="text" value={markerUser} onChange={(e) => setMarkerUser(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]" />
+
+                                        {/* Markers+Subcaps and Pulls on the same row */}
+                                        <div className="flex gap-3 mb-3">
+                                            {/* Markers & Subcaps */}
+                                            <div id="tour-markers-subcaps" className="flex-1 border border-[#1a2530] rounded-xl p-2 grid grid-cols-2 gap-2">
+                                                <div className="relative" ref={markersDropRef}>
+                                                    <div className="flex rounded-lg overflow-hidden h-full">
+                                                        <button onClick={exportMarkers} disabled={!edlData} className="flex-1 px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium text-sm transition btn-teal rounded-none">Markers</button>
+                                                        <button onClick={() => setMarkersDropOpen(o => !o)} disabled={!edlData} className="px-2 py-2 bg-[#0d9488] hover:bg-[#0b7a6f] disabled:bg-[#1a2530] disabled:text-gray-600 disabled:border-[#1a2530] text-[#0a0f14] text-sm transition border-l border-[#0b7a6f]" title="Marker options">▾</button>
+                                                    </div>
+                                                    {markersDropOpen && (
+                                                        <div className="absolute top-full left-0 mt-1 z-50 bg-[#0d1318] border border-[#2a3545] rounded-lg p-3 w-56 space-y-2 shadow-xl">
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">User info</label>
+                                                                <input type="text" value={markerUser} onChange={(e) => setMarkerUser(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] border border-[#2a3545] rounded text-xs text-white focus:outline-none focus:border-[#14b8a6]" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">Position</label>
+                                                                <select value={markerPosition} onChange={(e) => setMarkerPosition(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] border border-[#2a3545] rounded text-xs text-white focus:outline-none focus:border-[#14b8a6]">
+                                                                    {[['start', 'Start'], ['middle', 'Middle']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">Track</label>
+                                                                <select value={markerTrack} onChange={(e) => setMarkerTrack(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] border border-[#2a3545] rounded text-xs text-white focus:outline-none focus:border-[#14b8a6]">
+                                                                    {['TC','V1','V2','V3','V4','V5','V6','V7','V8'].map(v => <option key={v} value={v}>{v}</option>)}
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">Color</label>
+                                                                <select value={markerColor} onChange={(e) => setMarkerColor(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] border border-[#2a3545] rounded text-xs text-white focus:outline-none focus:border-[#14b8a6]">
+                                                                    {['red','green','blue','cyan','magenta','yellow','black','white'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <button onClick={exportSubcaps} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">Subcaps</button>
                                             </div>
-                                            <div>
-                                                <label className="block text-xs text-gray-500 mb-1">Position</label>
-                                                <select value={markerPosition} onChange={(e) => setMarkerPosition(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
-                                                    {[['start', 'Start'], ['middle', 'Middle']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs text-gray-500 mb-1">Track</label>
-                                                <select value={markerTrack} onChange={(e) => setMarkerTrack(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
-                                                    {['TC','V1','V2','V3','V4','V5','V6','V7','V8'].map(v => <option key={v} value={v}>{v}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs text-gray-500 mb-1">Color</label>
-                                                <select value={markerColor} onChange={(e) => setMarkerColor(e.target.value)} className="w-full px-2 py-2 bg-[#0a0f14] border border-[#2a3545] rounded-lg text-sm text-white focus:outline-none focus:border-[#14b8a6]">
-                                                    {['red','green','blue','cyan','magenta','yellow','black','white'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-                                                </select>
+
+                                            {/* Pulls */}
+                                            <div id="tour-pulls" className="flex-1 border border-[#1a2530] rounded-xl p-2 grid grid-cols-2 gap-2">
+                                                {[['Pulls ALE', exportALEPulls], ['Pulls EDL', exportPullsEDL]].map(([name, fn]) => (
+                                                    <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">{name}</button>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                            {[['Subcaps', exportSubcaps], ['Pulls ALE', exportALEPulls], ['Pulls EDL', exportPullsEDL], ['DB Export', exportGoogleTab]].map(([name, fn]) => (
-                                                <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">{name}</button>
-                                            ))}
+
+                                        {/* DB Export */}
+                                        <div id="tour-db-export" className="border border-[#1a2530] rounded-xl p-2 flex justify-center">
+                                            <button onClick={exportGoogleTab} disabled={!edlData} style={{width: 'calc(50% - 4px)'}} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">DB Export</button>
                                         </div>
                                     </div>
 
-                                    {edlData && <EDLPreview edlData={edlData} edlFilePath={edlFilePath} onExportChangelist={exportChangelist} onClearChangelist={clearChangelist} />}
+                                    <div id="tour-preview">{edlData && <EDLPreview edlData={edlData} edlFilePath={edlFilePath} onExportChangelist={exportChangelist} onClearChangelist={clearChangelist} />}</div>
 
-                                    <div className="pt-6 border-t border-[#1a2530]">
+                                    <div id="tour-incoming" className="pt-6 border-t border-[#1a2530]">
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Incoming VFX EDL</h2>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
                                             <DropZone
@@ -858,7 +1077,7 @@
                                                 </div>
                                                 <div className="overflow-x-auto max-h-64 overflow-y-auto border border-[#1a2530] rounded-lg">
                                                     <table className="w-full text-xs">
-                                                        <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0">
+                                                        <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0 z-10">
                                                             <tr>{['#', 'Name', 'Start', 'End'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
                                                         </thead>
                                                         <tbody className="text-gray-300">
@@ -889,6 +1108,18 @@
                         </div>
                     </div>
                 </div>
+                {tourStep === null && (
+                    <button className="tour-fab" onClick={() => { setCurrentPage('main'); setTourStep(0); }}>
+                        <span className="tour-fab-icon">?</span>
+                        Quick Tour
+                    </button>
+                )}
+                <Tour
+                    step={tourStep}
+                    onNext={() => setTourStep(s => s + 1)}
+                    onClose={() => setTourStep(null)}
+                />
+                </>
             );
         };
 
