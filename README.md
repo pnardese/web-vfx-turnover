@@ -24,9 +24,21 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 
 Create an EDL (File_129 or CMX3600) from the Avid video track containing only shots planned for VFX. In List Options in Avid, check: **Clip Names**, **Source File Name**, and **Markers**.
 
-VFX IDs are created automatically based on the following rule: `FILE_ID_Scene_num`, where num is a progressive number like 010, 020, 030, etc.
+VFX IDs are created automatically based on the following rule: `FILM_ID_Scene_num`, where num is a progressive number like 010, 020, 030, etc.
 
-Existing markers on timeline are imported into the tool as existing VFX IDs (you can find them in the EDL as `*LOC/*` LOC lines). Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs to re-import them correctly into the tool.
+#### How scene numbers are extracted
+
+The EDL contains a comment line for each event with the subclip name, for example:
+
+```
+*FROM CLIP NAME:  33-4-/01
+```
+
+The tool reads the **first sequence of digits** in the clip name as the scene number — in this example `33`, padded to three digits: `033`. The shot counter within that scene starts at `010` and increments by 10 for each additional clip in the same scene, giving IDs such as `FILM_ID_033_010`, `FILM_ID_033_020`, etc.
+
+> This convention assumes a standard feature-film workflow where subclips are named with scene number followed by take information (e.g. `33-4-/01` = scene 33, shot 4, take 1). If your project uses a different naming convention, assign VFX IDs manually in Avid Media Composer via markers before exporting the EDL.
+
+Existing markers on timeline are imported into the tool as existing VFX IDs (you can find them in the EDL as `*LOC/*` LOC lines). If a clip already has a marker, its VFX ID is read directly from that marker and is not changed — auto-generation only applies to clips with no marker assigned. Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs to re-import them correctly into the tool.
 
 ![Configuration of the list tool in Avid Media Composer for EDL exporting](imgs/01_create_edl.png)
 
