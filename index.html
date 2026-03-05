@@ -186,6 +186,7 @@
         };
         const addTimecode = (tc, fa, fr) => framesToTimecode(parseTimecode(tc, fr) + fa, fr);
         const subtractTimecode = (tc, fs, fr) => framesToTimecode(Math.max(0, parseTimecode(tc, fr) - fs), fr);
+        const cmpEventNum = (a, b) => parseInt(a.event_number) - parseInt(b.event_number);
 
         // ─── Icon ─────────────────────────────────────────────────────────────────
         const Icon = ({ path }) => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} /></svg>;
@@ -241,7 +242,7 @@
                     <div className="bg-purple-900/20 border border-purple-800 rounded-lg p-3 mb-3 text-xs">
                         <span className="text-purple-400 font-semibold uppercase">Missing VFX ID — </span>
                         <span className="text-purple-300">the following clips have no VFX ID assigned: </span>
-                        <span className="text-purple-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'missing_id').sort((a, b) => parseInt(a.event_number) - parseInt(b.event_number)).map(e => `event ${e.event_number}${e.reel ? ` (${e.reel})` : ''}${e.prevVfxId ? ` — was: ${e.prevVfxId}` : ''}`).join(', ')}</span>
+                        <span className="text-purple-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'missing_id').sort(cmpEventNum).map(e => `event ${e.event_number}${e.reel ? ` (${e.reel})` : ''}${e.prevVfxId ? ` — was: ${e.prevVfxId}` : ''}`).join(', ')}</span>
                     </div>
                 )}
                 {edlData.events.some(e => e.reelMismatch) && (
@@ -264,7 +265,7 @@
                             <tr>{['#', 'VFX ID', 'Status', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
                         </thead>
                         <tbody className="text-gray-300">
-                            {[...edlData.events].sort((a, b) => { const n = parseInt(a.event_number) - parseInt(b.event_number); return n !== 0 ? n : (a['VFX ID'] || '').localeCompare(b['VFX ID'] || ''); }).map((e, i) => (
+                            {[...edlData.events].sort((a, b) => { const n = cmpEventNum(a, b); return n !== 0 ? n : (a['VFX ID'] || '').localeCompare(b['VFX ID'] || ''); }).map((e, i) => (
                                 <tr key={i} style={{"--row-i": i}} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 table-row-anim ${e.changeStatus === 'missing_id' ? 'border-l-2 border-l-purple-500' : e.changeStatus === 'marker_changed' ? 'border-l-2 border-l-amber-500' : e.reelMismatch ? 'border-l-2 border-l-red-500' : ''} ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : e.changeStatus === 'missing_id' ? 'bg-purple-900/20' : e.changeStatus === 'marker_changed' ? 'bg-amber-900/20' : ''}`}>
                                     <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
                                     <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'missing_id' ? 'text-purple-400 font-semibold italic' : e.changeStatus === 'marker_changed' ? 'text-amber-400 font-semibold' : e.reelMismatch ? 'text-red-400 font-semibold' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID'] || '[NO ID]'}{e.changeStatus === 'missing_id' && e.prevVfxId && <span className="ml-1 text-purple-500 font-normal not-italic text-xs">(was: {e.prevVfxId})</span>}{e.changeStatus === 'marker_changed' && e.prevVfxId && <span className="ml-1 text-amber-500 font-normal text-xs">(was: {e.prevVfxId})</span>}</td>
@@ -647,9 +648,11 @@
                         // Build lookup of cached events by reel+sourceIn and by event_number
                         const cachedByReelTC = new Map();
                         const cachedByEventNum = new Map();
+                        const cachedByVfxId = new Map();
                         cachedActive.forEach(ce => {
                             cachedByReelTC.set(`${ce.reel}|${ce.source_start_TC}`, ce);
                             cachedByEventNum.set(ce.event_number, ce);
+                            if (ce['VFX ID']) cachedByVfxId.set(ce['VFX ID'], ce);
                         });
 
                         // Track accounted cached events: by VFX ID (non-empty) and by event_number
@@ -686,7 +689,7 @@
                                     newCount++;
                                 }
                             } else {
-                                const cachedEvent = cachedActive.find(ce => ce['VFX ID'] === e['VFX ID']);
+                                const cachedEvent = cachedByVfxId.get(e['VFX ID']);
                                 if (cachedEvent && e.reel !== cachedEvent.reel) {
                                     e.reelMismatch = true;
                                     e.prevReel = cachedEvent.reel;
