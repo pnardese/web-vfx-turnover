@@ -234,13 +234,14 @@
                         {edlData.events.some(e => e.changeStatus === 'trimmed_ok') && <span className="ml-2 text-yellow-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_ok').length} changed (no pull)</span>}
                         {edlData.events.some(e => e.changeStatus === 'trimmed_pull') && <span className="ml-2 text-orange-400">{edlData.events.filter(e => e.changeStatus === 'trimmed_pull').length} need pull</span>}
                         {edlData.events.some(e => e.changeStatus === 'missing_id') && <span className="ml-2 text-purple-400">{edlData.events.filter(e => e.changeStatus === 'missing_id').length} missing VFX ID</span>}
+                        {edlData.events.some(e => e.changeStatus === 'marker_changed') && <span className="ml-2 text-amber-400">{edlData.events.filter(e => e.changeStatus === 'marker_changed').length} marker ID changed</span>}
                     </p>
                 </div>
                 {edlData.events.some(e => e.changeStatus === 'missing_id') && (
                     <div className="bg-purple-900/20 border border-purple-800 rounded-lg p-3 mb-3 text-xs">
                         <span className="text-purple-400 font-semibold uppercase">Missing VFX ID — </span>
                         <span className="text-purple-300">the following clips have no VFX ID assigned: </span>
-                        <span className="text-purple-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'missing_id').map(e => `event ${e.event_number}${e.reel ? ` (${e.reel})` : ''}${e.prevVfxId ? ` — was: ${e.prevVfxId}` : ''}`).join(', ')}</span>
+                        <span className="text-purple-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'missing_id').sort((a, b) => parseInt(a.event_number) - parseInt(b.event_number)).map(e => `event ${e.event_number}${e.reel ? ` (${e.reel})` : ''}${e.prevVfxId ? ` — was: ${e.prevVfxId}` : ''}`).join(', ')}</span>
                     </div>
                 )}
                 {edlData.events.some(e => e.reelMismatch) && (
@@ -250,22 +251,30 @@
                         <span className="text-red-400 font-mono">{edlData.events.filter(e => e.reelMismatch).map(e => e['VFX ID']).join(', ')}</span>
                     </div>
                 )}
+                {edlData.events.some(e => e.changeStatus === 'marker_changed') && (
+                    <div className="bg-amber-900/20 border border-amber-800 rounded-lg p-3 mb-3 text-xs">
+                        <span className="text-amber-400 font-semibold uppercase">Marker ID changed — check in Avid — </span>
+                        <span className="text-amber-300">the following clips have a different VFX ID in the new EDL markers: </span>
+                        <span className="text-amber-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'marker_changed').map(e => `${e['VFX ID']} (was: ${e.prevVfxId})`).join(', ')}</span>
+                    </div>
+                )}
                 <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
                     <table className="w-full text-xs">
                         <thead className="bg-[#1a2530] text-[#14b8a6] uppercase sticky top-0 z-10">
                             <tr>{['#', 'VFX ID', 'Status', 'Reel', 'Source In', 'Source Out', 'Record In', 'Record Out'].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr>
                         </thead>
                         <tbody className="text-gray-300">
-                            {[...edlData.events].sort((a, b) => a['VFX ID'].localeCompare(b['VFX ID'])).map((e, i) => (
-                                <tr key={i} style={{"--row-i": i}} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 table-row-anim ${e.changeStatus === 'missing_id' ? 'border-l-2 border-l-purple-500' : e.reelMismatch ? 'border-l-2 border-l-red-500' : ''} ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : e.changeStatus === 'missing_id' ? 'bg-purple-900/20' : ''}`}>
+                            {[...edlData.events].sort((a, b) => parseInt(a.event_number) - parseInt(b.event_number)).map((e, i) => (
+                                <tr key={i} style={{"--row-i": i}} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 table-row-anim ${e.changeStatus === 'missing_id' ? 'border-l-2 border-l-purple-500' : e.changeStatus === 'marker_changed' ? 'border-l-2 border-l-amber-500' : e.reelMismatch ? 'border-l-2 border-l-red-500' : ''} ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : e.changeStatus === 'missing_id' ? 'bg-purple-900/20' : e.changeStatus === 'marker_changed' ? 'bg-amber-900/20' : ''}`}>
                                     <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
-                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'missing_id' ? 'text-purple-400 font-semibold italic' : e.reelMismatch ? 'text-red-400 font-semibold' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID'] || '[NO ID]'}{e.changeStatus === 'missing_id' && e.prevVfxId && <span className="ml-1 text-purple-500 font-normal not-italic text-xs">(was: {e.prevVfxId})</span>}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'missing_id' ? 'text-purple-400 font-semibold italic' : e.changeStatus === 'marker_changed' ? 'text-amber-400 font-semibold' : e.reelMismatch ? 'text-red-400 font-semibold' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID'] || '[NO ID]'}{e.changeStatus === 'missing_id' && e.prevVfxId && <span className="ml-1 text-purple-500 font-normal not-italic text-xs">(was: {e.prevVfxId})</span>}{e.changeStatus === 'marker_changed' && <span className="ml-1 text-amber-500 font-normal text-xs">(was: {e.prevVfxId})</span>}</td>
                                     <td className="px-3 py-2 text-xs">
                                         {e.changeStatus === 'new' && <span className="text-green-400 font-medium">NEW - NEED TO PULL</span>}
                                         {e.changeStatus === 'removed' && <span className="text-red-400 font-medium">REMOVED</span>}
                                         {e.changeStatus === 'trimmed_ok' && <span className="text-yellow-400 font-medium">TRIMMED BUT NO NEED TO PULL</span>}
                                         {e.changeStatus === 'trimmed_pull' && <span className="text-orange-400 font-medium">TRIMMED - NEED TO PULL</span>}
                                         {e.changeStatus === 'missing_id' && <span className="text-purple-400 font-medium">MISSING VFX ID</span>}
+                                        {e.changeStatus === 'marker_changed' && <span className="text-amber-400 font-medium">MARKER ID CHANGED — CHECK IN AVID</span>}
                                     </td>
                                     <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.reelMismatch ? 'text-red-400 font-semibold' : ''}`}>{e.reel}{e.reelMismatch && <span className="ml-1 text-red-500 font-normal">(was: {e.prevReel})</span>}</td>
                                     <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_start_TC !== e.prevSourceIn ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_start_TC !== e.prevSourceIn ? 'text-yellow-400' : ''}`}>{e.source_start_TC}</td>
@@ -553,10 +562,10 @@
             useEffect(() => { if (edlDb && Object.keys(edlDb).length > 0) localStorage.setItem('vfx_edl_db', JSON.stringify(edlDb)); else localStorage.removeItem('vfx_edl_db'); }, [edlDb]);
 
             // ── EDL parsing ───────────────────────────────────────────────────────
-            const parseEDL = (edlText, autoGenerate = true) => {
+            const parseEDL = (edlText) => {
                 const lines = edlText.split('\n');
                 const edlData = { edl_metadata: { edl_title: '', edl_fcm: '' }, events: [] };
-                let lastEvent = null, lastScene = 0, vfxCounter = 0;
+                let lastEvent = null;
                 const edlLineRegex = /^(\d+)\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})$/;
 
                 for (let line of lines) {
@@ -589,15 +598,6 @@
                         if (sourceValue && sourceValue.length > lastEvent.reel.length) {
                             lastEvent.reel = sourceValue;
                         }
-                        const match = lastEvent.FROM.match(/\d+/);
-                        if (match) {
-                            const scene = match[0].padStart(3, '0');
-                            vfxCounter = (scene === lastScene) ? vfxCounter + 10 : 10;
-                            lastScene = scene;
-                            if (autoGenerate && !lastEvent.LOC && !lastEvent['VFX ID']) {
-                                lastEvent['VFX ID'] = `${filmId}_${scene}_${String(vfxCounter).padStart(3, '0')}`;
-                            }
-                        }
                     }
                 }
                 const fps_detected = edlData.edl_metadata.edl_fcm ? edlData.edl_metadata.edl_fcm : 'unknown';
@@ -612,14 +612,30 @@
                 window.VFXLog.log('FILE', 'EDL file loaded', { name: file.name, size: file.size });
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const parsed = parseEDL(e.target.result, !edlData);
+                    const parsed = parseEDL(e.target.result);
                     const fname = file.name.replace(/\.[^/.]+$/, '');
                     parsed.edl_metadata.edl_filename = fname;
                     if (!parsed.edl_metadata.edl_title?.trim()) parsed.edl_metadata.edl_title = fname;
 
+                    // Auto-generate VFX IDs only when EDL has no LOC markers at all
+                    const hasAnyMarker = parsed.events.some(ev => ev['VFX ID']);
+                    if (!hasAnyMarker) {
+                        let lastScene = 0, vfxCounter = 0;
+                        parsed.events.forEach(ev => {
+                            const match = ev.FROM.match(/\d+/);
+                            if (match) {
+                                const scene = match[0].padStart(3, '0');
+                                vfxCounter = (scene === lastScene) ? vfxCounter + 10 : 10;
+                                lastScene = scene;
+                                ev['VFX ID'] = `${filmId}_${scene}_${String(vfxCounter).padStart(3, '0')}`;
+                            }
+                        });
+                        window.VFXLog.log('PARSE', 'VFX IDs auto-generated (no markers in EDL)', { count: parsed.events.length });
+                    }
+
                     // Compare with cached EDL data
                     const cachedEdl = edlData;
-                    let newCount = 0, removedCount = 0, reelMismatchCount = 0;
+                    let newCount = 0, removedCount = 0, reelMismatchCount = 0, markerChangedCount = 0;
 
                     if (cachedEdl && cachedEdl.events) {
                         parsed.edl_metadata.prevEdlFilename = edlFilePath;
@@ -637,8 +653,17 @@
                         // Pass 1: events WITH a VFX ID
                         parsed.events.filter(e => e['VFX ID']).forEach(e => {
                             if (!cachedVfxIds.has(e['VFX ID'])) {
-                                e.changeStatus = 'new';
-                                newCount++;
+                                // If new EDL has markers, check whether same clip existed with a different VFX ID
+                                const cachedByTC = hasAnyMarker ? cachedByReelTC.get(`${e.reel}|${e.source_start_TC}`) : null;
+                                if (cachedByTC && cachedByTC['VFX ID'] && cachedByTC['VFX ID'] !== e['VFX ID']) {
+                                    e.changeStatus = 'marker_changed';
+                                    e.prevVfxId = cachedByTC['VFX ID'];
+                                    accountedCachedIds.add(cachedByTC['VFX ID']);
+                                    markerChangedCount++;
+                                } else {
+                                    e.changeStatus = 'new';
+                                    newCount++;
+                                }
                             } else {
                                 const cachedEvent = cachedActive.find(ce => ce['VFX ID'] === e['VFX ID']);
                                 if (cachedEvent && e.reel !== cachedEvent.reel) {
@@ -696,6 +721,7 @@
                     if (trimmedPullCount > 0) statusParts.push(`${trimmedPullCount} need pull`);
                     if (reelMismatchCount > 0) statusParts.push(`WARNING: ${reelMismatchCount} reel mismatch`);
                     if (missingIdCount > 0) statusParts.push(`WARNING: ${missingIdCount} missing VFX ID`);
+                    if (markerChangedCount > 0) statusParts.push(`WARNING: ${markerChangedCount} marker ID changed — check in Avid`);
                     setStatus(statusParts.join(', '));
                 };
                 reader.readAsText(file);
