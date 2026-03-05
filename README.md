@@ -6,15 +6,15 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 
 ## Features
 
-- **Automatic VFX ID Generation** - Creates VFX IDs based on scene numbers (format: `FILM_ID_SCENE_SHOT`)
-- **Support for Existing Markers** - Recognizes LOC lines in EDL files
+- **Automatic VFX ID Generation** - Creates VFX IDs based on scene numbers (format: `FILM_ID_SCENE_SHOT`) only when the EDL has no existing markers; if any markers are present, IDs are read directly from the markers and missing ones are flagged as warnings
+- **Support for Existing Markers** - Recognizes LOC lines in EDL files; marker IDs are never overwritten
 - **Multiple Export Formats** - Markers, Subcaps, ALE, EDL, and spreadsheet formats
 - **Timecode Calculations** - Customizable FPS and handles
 - **Drag-and-Drop Interface** - Easy file upload
 - **Persistent Settings** - Configuration saved locally in browser
 - **Persistent File Data** - Loaded EDL and AVID Bin files are preserved across browser sessions
 - **Clear Data Controls** - Easily clear loaded files with one-click buttons
-- **Change Tracking** - Compare new EDL with cached version: new clips in green (NEW - NEED TO PULL), removed in red, trimmed clips flagged as TRIMMED BUT NO NEED TO PULL (yellow) or TRIMMED - NEED TO PULL (orange), clips missing a VFX ID in purple, reel mismatches shown with a warning banner; preview table sorted by VFX ID
+- **Change Tracking** - Compare new EDL with cached version: new clips in green (NEW - NEED TO PULL), removed in red, trimmed clips flagged as TRIMMED BUT NO NEED TO PULL (yellow) or TRIMMED - NEED TO PULL (orange), clips missing a VFX ID in purple, marker ID changed between versions in amber (CHECK IN AVID), reel mismatches shown with a warning banner; preview table sorted by EDL event order
 - **Changelist Export** - Export the full changelist as a tab-delimited file for import into spreadsheets or databases
 - **Incoming VFX EDL** - Match VFX vendor clips to original EDL by source timecodes
 
@@ -38,7 +38,9 @@ The tool reads the **first sequence of digits** in the clip name as the scene nu
 
 > This convention assumes a standard feature-film workflow where subclips are named with scene number followed by take information (e.g. `33-4-/01` = scene 33, shot 4, take 1). If your project uses a different naming convention, assign VFX IDs manually in Avid Media Composer via markers before exporting the EDL.
 
-Existing markers on timeline are imported into the tool as existing VFX IDs (you can find them in the EDL as `*LOC/*` LOC lines). If a clip already has a marker, its VFX ID is read directly from that marker and is not changed — auto-generation only applies to clips with no marker assigned. Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs to re-import them correctly into the tool.
+When the EDL has no LOC markers at all, VFX IDs are auto-generated for every clip. When the EDL contains any LOC markers (a marked EDL), the tool reads VFX IDs directly from those markers and never overwrites them. Clips without a marker in a marked EDL are flagged with a **MISSING VFX ID** warning — assign the marker in Avid and re-export the EDL.
+
+Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs before exporting the EDL so they are imported correctly into the tool.
 
 ![Configuration of the list tool in Avid Media Composer for EDL exporting](imgs/01_create_edl.png)
 
@@ -125,13 +127,15 @@ When loading a new EDL file, the tool compares it with the previously cached ver
 - **Red with strikethrough (removed)** - VFX IDs no longer present in the new EDL
 - **Yellow — "TRIMMED BUT NO NEED TO PULL"** - Source timecodes changed, but the new in/out points fall within the existing pull range (`old Source In − handles` → `old Source Out + handles`); no new pull required. Changed timecodes are highlighted in yellow.
 - **Orange — "TRIMMED - NEED TO PULL"** - Source timecodes changed and the new in/out points fall outside the existing pull range; a new pull is required. Changed timecodes are highlighted in orange.
-- **Purple — "MISSING VFX ID"** - Clips with no LOC marker (no VFX ID assigned). If the clip can be matched to a cached event by reel and source timecode, the previous VFX ID is shown as `(was: PREV_ID)`.
+- **Purple — "MISSING VFX ID"** - Clip has no LOC marker (no VFX ID assigned) in a marked EDL. If the clip can be matched to a cached event by reel and source timecode, the previous VFX ID is shown as `(was: PREV_ID)`.
+- **Amber — "MARKER ID CHANGED — CHECK IN AVID"** - A clip matched by reel and source timecode has a different VFX ID in the new EDL's marker compared to the cached version. This indicates the marker was edited in Avid; verify the change is intentional before proceeding.
 
 Warning banners are shown when:
 - Any clip has a **reel mismatch** — the source reel changed between versions (affected VFX IDs listed; rows highlighted in red).
-- Any clip is **missing a VFX ID** — listed with their event number and reel.
+- Any clip is **missing a VFX ID** — listed in EDL event order with event number and reel.
+- Any clip has a **marker ID changed** — listed with new and previous VFX IDs.
 
-Preview table rows are sorted by VFX ID. Removed events are interleaved in alphabetical order.
+Preview table rows are sorted by EDL event order. Removed events appear at the end of the table.
 
 Removed VFX IDs are shown for reference but are excluded from all exports.
 
