@@ -255,7 +255,7 @@
                     <div className="bg-amber-900/20 border border-amber-800 rounded-lg p-3 mb-3 text-xs">
                         <span className="text-amber-400 font-semibold uppercase">Marker ID changed — check in Avid — </span>
                         <span className="text-amber-300">the following clips have a different VFX ID in the new EDL markers: </span>
-                        <span className="text-amber-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'marker_changed').map(e => `${e['VFX ID']} (was: ${e.prevVfxId})`).join(', ')}</span>
+                        <span className="text-amber-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'marker_changed').map(e => `${e['VFX ID']}${e.prevVfxId ? ` (was: ${e.prevVfxId})` : ' (new marker)'}`).join(', ')}</span>
                     </div>
                 )}
                 <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] rounded-lg">
@@ -267,7 +267,7 @@
                             {[...edlData.events].sort((a, b) => { const n = parseInt(a.event_number) - parseInt(b.event_number); return n !== 0 ? n : (a['VFX ID'] || '').localeCompare(b['VFX ID'] || ''); }).map((e, i) => (
                                 <tr key={i} style={{"--row-i": i}} className={`border-b border-[#1a2530] hover:bg-[#1a2530]/50 table-row-anim ${e.changeStatus === 'missing_id' ? 'border-l-2 border-l-purple-500' : e.changeStatus === 'marker_changed' ? 'border-l-2 border-l-amber-500' : e.reelMismatch ? 'border-l-2 border-l-red-500' : ''} ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : e.changeStatus === 'missing_id' ? 'bg-purple-900/20' : e.changeStatus === 'marker_changed' ? 'bg-amber-900/20' : ''}`}>
                                     <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
-                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'missing_id' ? 'text-purple-400 font-semibold italic' : e.changeStatus === 'marker_changed' ? 'text-amber-400 font-semibold' : e.reelMismatch ? 'text-red-400 font-semibold' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID'] || '[NO ID]'}{e.changeStatus === 'missing_id' && e.prevVfxId && <span className="ml-1 text-purple-500 font-normal not-italic text-xs">(was: {e.prevVfxId})</span>}{e.changeStatus === 'marker_changed' && <span className="ml-1 text-amber-500 font-normal text-xs">(was: {e.prevVfxId})</span>}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'missing_id' ? 'text-purple-400 font-semibold italic' : e.changeStatus === 'marker_changed' ? 'text-amber-400 font-semibold' : e.reelMismatch ? 'text-red-400 font-semibold' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID'] || '[NO ID]'}{e.changeStatus === 'missing_id' && e.prevVfxId && <span className="ml-1 text-purple-500 font-normal not-italic text-xs">(was: {e.prevVfxId})</span>}{e.changeStatus === 'marker_changed' && e.prevVfxId && <span className="ml-1 text-amber-500 font-normal text-xs">(was: {e.prevVfxId})</span>}</td>
                                     <td className="px-3 py-2 text-xs">
                                         {e.changeStatus === 'new' && <span className="text-green-400 font-medium">NEW - NEED TO PULL</span>}
                                         {e.changeStatus === 'removed' && <span className="text-red-400 font-medium">REMOVED</span>}
@@ -277,8 +277,8 @@
                                         {e.changeStatus === 'marker_changed' && <span className="text-amber-400 font-medium">MARKER ID CHANGED — CHECK IN AVID</span>}
                                     </td>
                                     <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.reelMismatch ? 'text-red-400 font-semibold' : ''}`}>{e.reel}{e.reelMismatch && <span className="ml-1 text-red-500 font-normal">(was: {e.prevReel})</span>}</td>
-                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_start_TC !== e.prevSourceIn ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_start_TC !== e.prevSourceIn ? 'text-yellow-400' : ''}`}>{e.source_start_TC}</td>
-                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_end_TC !== e.prevSourceOut ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_end_TC !== e.prevSourceOut ? 'text-yellow-400' : ''}`}>{e.source_end_TC}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_start_TC !== e.prevSourceIn ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_start_TC !== e.prevSourceIn ? 'text-yellow-400' : e.changeStatus === 'marker_changed' && e.prevSourceIn && e.source_start_TC !== e.prevSourceIn ? 'text-amber-400' : ''}`}>{e.source_start_TC}{e.changeStatus === 'marker_changed' && e.prevSourceIn && e.source_start_TC !== e.prevSourceIn && <span className="ml-1 text-amber-600 font-normal text-xs">(was: {e.prevSourceIn})</span>}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_end_TC !== e.prevSourceOut ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_end_TC !== e.prevSourceOut ? 'text-yellow-400' : e.changeStatus === 'marker_changed' && e.prevSourceOut && e.source_end_TC !== e.prevSourceOut ? 'text-amber-400' : ''}`}>{e.source_end_TC}{e.changeStatus === 'marker_changed' && e.prevSourceOut && e.source_end_TC !== e.prevSourceOut && <span className="ml-1 text-amber-600 font-normal text-xs">(was: {e.prevSourceOut})</span>}</td>
                                     <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_start_TC}</td>
                                     <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_end_TC}</td>
                                 </tr>
@@ -644,23 +644,43 @@
                         const cachedVfxIds = new Set(cachedActive.map(e => e['VFX ID']));
                         const newVfxIds = new Set(parsed.events.filter(e => e['VFX ID']).map(e => e['VFX ID']));
 
-                        // Build lookup of cached events by reel+sourceIn for matching no-ID clips
+                        // Build lookup of cached events by reel+sourceIn and by event_number
                         const cachedByReelTC = new Map();
-                        cachedActive.forEach(ce => cachedByReelTC.set(`${ce.reel}|${ce.source_start_TC}`, ce));
+                        const cachedByEventNum = new Map();
+                        cachedActive.forEach(ce => {
+                            cachedByReelTC.set(`${ce.reel}|${ce.source_start_TC}`, ce);
+                            cachedByEventNum.set(ce.event_number, ce);
+                        });
 
-                        // Track cached IDs accounted for by a no-ID clip (clip exists, lost marker)
+                        // Track accounted cached events: by VFX ID (non-empty) and by event_number
                         const accountedCachedIds = new Set();
+                        const accountedCachedEventNums = new Set();
 
                         // Pass 1: events WITH a VFX ID
                         parsed.events.filter(e => e['VFX ID']).forEach(e => {
                             if (!cachedVfxIds.has(e['VFX ID'])) {
-                                // If new EDL has markers, check whether same clip existed with a different VFX ID
-                                const cachedByTC = hasAnyMarker ? cachedByReelTC.get(`${e.reel}|${e.source_start_TC}`) : null;
-                                if (cachedByTC && cachedByTC['VFX ID'] && cachedByTC['VFX ID'] !== e['VFX ID']) {
-                                    e.changeStatus = 'marker_changed';
-                                    e.prevVfxId = cachedByTC['VFX ID'];
-                                    accountedCachedIds.add(cachedByTC['VFX ID']);
-                                    markerChangedCount++;
+                                if (hasAnyMarker) {
+                                    // 1. Exact reel+TC match
+                                    const cachedByTC = cachedByReelTC.get(`${e.reel}|${e.source_start_TC}`);
+                                    // 2. Fallback: same event_number + same reel (handles TC changes)
+                                    const cachedByEvNum = !cachedByTC ? cachedByEventNum.get(e.event_number) : null;
+                                    const cachedMatch = (cachedByTC && cachedByTC['VFX ID'] !== e['VFX ID']) ? cachedByTC
+                                                      : (cachedByEvNum && cachedByEvNum.reel === e.reel && cachedByEvNum['VFX ID'] !== e['VFX ID']) ? cachedByEvNum
+                                                      : null;
+                                    if (cachedMatch) {
+                                        e.changeStatus = 'marker_changed';
+                                        e.prevVfxId = cachedMatch['VFX ID'] || null;
+                                        if (cachedMatch['VFX ID']) accountedCachedIds.add(cachedMatch['VFX ID']);
+                                        accountedCachedEventNums.add(cachedMatch.event_number);
+                                        if (e.source_start_TC !== cachedMatch.source_start_TC || e.source_end_TC !== cachedMatch.source_end_TC) {
+                                            e.prevSourceIn = cachedMatch.source_start_TC;
+                                            e.prevSourceOut = cachedMatch.source_end_TC;
+                                        }
+                                        markerChangedCount++;
+                                    } else {
+                                        e.changeStatus = 'new';
+                                        newCount++;
+                                    }
                                 } else {
                                     e.changeStatus = 'new';
                                     newCount++;
@@ -699,7 +719,7 @@
 
                         // Add truly removed events (not matched by VFX ID and not matched by reel+TC)
                         cachedActive.forEach(cachedEvent => {
-                            if (!newVfxIds.has(cachedEvent['VFX ID']) && !accountedCachedIds.has(cachedEvent['VFX ID'])) {
+                            if (!newVfxIds.has(cachedEvent['VFX ID']) && !accountedCachedIds.has(cachedEvent['VFX ID']) && !accountedCachedEventNums.has(cachedEvent.event_number)) {
                                 parsed.events.push({ ...cachedEvent, changeStatus: 'removed' });
                                 removedCount++;
                             }
