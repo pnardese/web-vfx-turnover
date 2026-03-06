@@ -358,7 +358,36 @@
                 </div>
                 <div>
                     <h3 className="text-base font-semibold text-[#14b8a6] mb-2">4. Export TAB Text Files</h3>
-                    <p>Export TAB text files with VFX IDs info, that can be imported in any database/spreadsheet to build a VFX shot database.</p>
+                    <p className="mb-3">Export TAB text files with VFX IDs info, that can be imported in any database/spreadsheet to build a VFX shot database. The <strong className="text-white">Changelist Export</strong> uses the same columns, with <code className="bg-[#1a2530] px-1 rounded">Status</code> populated.</p>
+                    <table className="w-full text-sm border-collapse">
+                        <thead>
+                            <tr className="text-left text-[#14b8a6] border-b border-[#1a2530]">
+                                <th className="pb-1 pr-6 font-medium">Column</th>
+                                <th className="pb-1 font-medium">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-gray-300">
+                            {[
+                                ['#', 'Shot counter'],
+                                ['Name', 'VFX ID'],
+                                ['Thumbnail', 'Empty — for thumbnail reference'],
+                                ['Comments', 'Empty'],
+                                ['Status', 'Empty in DB Export; NEW / REMOVED / CHANGED - NO PULL NEEDED / NEED PULL in Changelist'],
+                                ['Date', 'Empty'],
+                                ['Duration', 'Source clip duration as timecode'],
+                                ['Start', 'Source start timecode'],
+                                ['End', 'Source end timecode'],
+                                ['Frame Count Duration', 'Duration in frames'],
+                                ['Handles', 'Handle frames configured for the project'],
+                                ['Tape', 'Source reel / tape name'],
+                            ].map(([col, desc]) => (
+                                <tr key={col} className="border-b border-[#1a2530]/50">
+                                    <td className="py-1 pr-6"><code className="bg-[#1a2530] px-1 rounded">{col}</code></td>
+                                    <td className="py-1 text-gray-400">{desc}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
                 <div>
                     <h3 className="text-base font-semibold text-[#14b8a6] mb-2">5. Changelist</h3>
@@ -905,7 +934,7 @@
                 if (!edlData) return;
                 window.VFXLog.log('EXPORT', 'exportGoogleTab', { count: getActiveEvents().length });
                 const fr = Math.round(parseFloat(fps)), bn = edlData.edl_metadata.edl_filename || 'output';
-                let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
+                let content = '#\tName\tThumbnail\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
                 getActiveEvents().forEach((e, i) => {
                     const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
                     content += `${i+1}\t${e['VFX ID']}\t\t\t\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
@@ -919,7 +948,7 @@
                 window.VFXLog.log('EXPORT', 'exportChangelist', { count: changeEvents.length });
                 const fr = Math.round(parseFloat(fps)), bn = edlData.edl_metadata.edl_filename || 'output';
                 const statusLabel = { new: 'NEW', removed: 'REMOVED', trimmed_ok: 'CHANGED - NO PULL NEEDED', trimmed_pull: 'NEED PULL', unchanged: '' };
-                let content = '#\tName\tFrame\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
+                let content = '#\tName\tThumbnail\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
                 edlData.events.forEach((e, i) => {
                     const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
                     content += `${i+1}\t${e['VFX ID']}\t\t\t${statusLabel[e.changeStatus] || ''}\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;

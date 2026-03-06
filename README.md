@@ -68,7 +68,7 @@ The exported file contains one row per shot with the following columns:
 |--------|-------------|
 | `#` | Shot counter |
 | `Name` | VFX ID |
-| `Frame` | *(empty — for thumbnail reference)* |
+| `Thumbnail` | *(empty — for thumbnail reference)* |
 | `Comments` | *(empty)* |
 | `Status` | *(empty)* |
 | `Date` | *(empty)* |
