@@ -933,7 +933,8 @@
                 let content = `TITLE: ${bn}_incoming\nFCM: NON-DROP FRAME\n`;
                 const activeEvents = getActiveEvents();
                 binData.forEach(b => activeEvents.forEach(e => {
-                    if (b.Start === e.source_start_TC && b.End === e.source_end_TC) content += `${e.event_number} ${b.Name} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}\n`;
+                    const vfxId = e['VFX ID'] || '';
+                    if (b.Name === vfxId || b.Name.startsWith(vfxId + '_') || b.Name.startsWith(vfxId + 'v')) content += `${e.event_number} ${b.Name} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}\n`;
                 }));
                 downloadFile(content, `${bn}_incoming.edl`);
             };
