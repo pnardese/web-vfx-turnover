@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,200;1,700&family=Barlow+Condensed:ital,wght@1,800&family=Barlow:wght@300&family=Source+Code+Pro:wght@500&display=swap" rel="stylesheet">
@@ -173,6 +174,207 @@
     window.onunhandledrejection = e =>
         window.VFXLog.log('ERROR', 'Unhandled rejection', { reason: String(e.reason) });
     </script>
+    <script>
+    (function() {
+        var _py = null;
+        var _promise = null;
+
+        var AAF_PYTHON_CODE = `import aaf2 as _aaf2, json as _json, shutil as _shutil, time as _time, uuid as _uuid
+
+_MARKER_COLOR_MAP = {
+    'green':   ('Green',   {'red': 13107, 'green': 52428, 'blue': 13107}),
+    'red':     ('Red',     {'red': 52428, 'green': 13107, 'blue': 13107}),
+    'blue':    ('Blue',    {'red': 13107, 'green': 13107, 'blue': 52428}),
+    'cyan':    ('Cyan',    {'red': 13107, 'green': 52428, 'blue': 52428}),
+    'magenta': ('Magenta', {'red': 52428, 'green': 13107, 'blue': 52428}),
+    'yellow':  ('Yellow',  {'red': 52428, 'green': 52428, 'blue': 13107}),
+    'black':   ('Black',   {'red': 0,     'green': 0,     'blue': 0}),
+    'white':   ('White',   {'red': 65535, 'green': 65535, 'blue': 65535}),
+}
+
+_CLIP_COLOR_MAP = {
+    'dark blue':     (14592, 11776, 38144),
+    'steel blue':    (15104, 25344, 37888),
+    'dark green':    (16896, 32768, 13824),
+    'cyan':          (16896, 54272, 62464),
+    'teal':          (17920, 39168, 36864),
+    'blue':          (22528, 17920, 58624),
+    'dark grey':     (22784, 22784, 22784),
+    'sky blue':      (23040, 38912, 58112),
+    'green':         (25856, 50432, 21248),
+    'dark purple':   (32256, 12544, 26880),
+    'dark brown':    (32256, 20992, 13568),
+    'olive':         (32256, 32768, 14336),
+    'dark red':      (32768,  9216,  9216),
+    'purple':        (36608,     0, 45824),
+    'mint':          (43520, 65280, 49920),
+    'crimson':       (48896,     0, 26112),
+    'sand':          (48896, 43264, 36608),
+    'light grey':    (48896, 48896, 48896),
+    'violet':        (49408, 19200, 41216),
+    'yellow-olive':  (49408, 50176, 22016),
+    'brown':         (49664, 32256, 20992),
+    'medium red':    (51200, 14592, 14592),
+    'beige':         (56064, 55296, 47104),
+    'light red':     (56832, 25600, 29696),
+    'gold':          (58368, 50688,     0),
+    'lavender':      (58880, 48640, 65280),
+    'magenta':       (61440, 12800, 58880),
+    'yellow-green':  (61952, 65280, 16384),
+    'orange':        (62720, 33280, 12544),
+    'pink':          (64000, 48640, 48640),
+    'rose':          (65280,     0, 29440),
+    'light orange':  (65280, 50176, 32768),
+}
+
+def _ensure_dm_def(f):
+    try:
+        f.dictionary.lookup_datadef('DescriptiveMetadata')
+    except Exception:
+        dm_dd = f.create.DataDef(
+            "01030201-1000-0000-060e-2b3404010101",
+            "DataDef_DescriptiveMetadata",
+            "Descriptive metadata",
+        )
+        f.dictionary.register_def(dm_dd)
+
+def write_aaf_clip_notes(events_json, input_path, output_path,
+                          user='vfx', color='green', position='middle',
+                          include_markers=True, clip_color='none'):
+    events = _json.loads(events_json)
+    color_str, color_rgb = _MARKER_COLOR_MAP.get(color.lower(), _MARKER_COLOR_MAP['green'])
+    now_ts = int(_time.time())
+    _shutil.copy2(input_path, output_path)
+    clip_num = 0
+    marker_data = []
+    with _aaf2.open(output_path, 'rw') as f:
+        _ensure_dm_def(f)
+        for mob in f.content.toplevel():
+            video_slot = None
+            for slot in mob.slots:
+                if not hasattr(slot.segment, 'components'):
+                    continue
+                media_kind = getattr(slot, 'media_kind', None)
+                if media_kind and 'picture' in str(media_kind).lower():
+                    video_slot = slot
+                    break
+            if not video_slot:
+                continue
+            video_slot_id = video_slot.slot_id
+            clip_num = 0
+            timeline_pos = 0
+            marker_data = []
+            for comp in video_slot.segment.components:
+                comp_type = type(comp).__name__
+                length = getattr(comp, 'length', 0) or 0
+                if comp_type == 'Filler':
+                    timeline_pos += length
+                    continue
+                if isinstance(comp, _aaf2.components.SourceClip) and comp.mob:
+                    target = comp
+                elif comp_type == 'Selector':
+                    target = comp
+                elif comp_type == 'OperationGroup':
+                    target = comp
+                else:
+                    timeline_pos += length
+                    continue
+                clip_num += 1
+                if clip_num > len(events):
+                    break
+                vfx_id = events[clip_num - 1]['VFX ID']
+                attr_list = target.get('ComponentAttributeList')
+                if attr_list is None:
+                    target['ComponentAttributeList'] = []
+                    attr_list = target['ComponentAttributeList']
+                found = False
+                for attr in attr_list:
+                    if attr.name == '_COMMENT':
+                        attr.value = vfx_id
+                        found = True
+                        break
+                if not found:
+                    tv = f.create.TaggedValue()
+                    tv['Name'].value = '_COMMENT'
+                    tv['Value'].value = vfx_id
+                    attr_list.append(tv)
+                if clip_color and clip_color != 'none' and clip_color.lower() in _CLIP_COLOR_MAP:
+                    r16, g16, b16 = _CLIP_COLOR_MAP[clip_color.lower()]
+                    color_vals = {'_COLOR_R': r16, '_COLOR_G': g16, '_COLOR_B': b16}
+                    found_keys = set()
+                    for attr in attr_list:
+                        if attr.name in color_vals:
+                            attr.value = color_vals[attr.name]
+                            found_keys.add(attr.name)
+                    for name, val in color_vals.items():
+                        if name not in found_keys:
+                            tv = f.create.TaggedValue()
+                            tv['Name'].value = name
+                            tv['Value'].value = val
+                            attr_list.append(tv)
+                if include_markers:
+                    marker_frame = timeline_pos + length // 2 if position == 'middle' else timeline_pos
+                    marker_data.append((marker_frame, vfx_id))
+                timeline_pos += length
+            if include_markers and marker_data:
+                event_slot = None
+                for slot in mob.slots:
+                    if type(slot).__name__ == 'EventMobSlot':
+                        event_slot = slot
+                        break
+                if event_slot is None:
+                    existing_ids = {s.slot_id for s in mob.slots}
+                    new_slot_id = max(existing_ids) + 1 if existing_ids else 1008
+                    event_slot = f.create.EventMobSlot()
+                    event_slot['SlotID'].value = new_slot_id
+                    event_slot['EditRate'].value = video_slot.edit_rate
+                    event_slot['SlotName'].value = ''
+                    seq = f.create.Sequence(media_kind='DescriptiveMetadata')
+                    seq['Components'].value = []
+                    event_slot['Segment'].value = seq
+                    mob.slots.append(event_slot)
+                else:
+                    seq = event_slot.segment
+                new_markers = []
+                for marker_frame, vfx_id in marker_data:
+                    marker = f.create.DescriptiveMarker()
+                    marker['Length'].value = 1
+                    marker['Position'].value = marker_frame
+                    marker['Comment'].value = vfx_id
+                    marker['CommentMarkerUSer'].value = user
+                    marker['CommentMarkerColor'].value = color_rgb
+                    marker['DescribedSlots'].value = {video_slot_id}
+                    tv_list = [
+                        f.create.TaggedValue('_ATN_CRM_COLOR',            color_str),
+                        f.create.TaggedValue('_ATN_CRM_COLOR_EXTENDED',   color_str),
+                        f.create.TaggedValue('_ATN_CRM_USER',             user),
+                        f.create.TaggedValue('_ATN_CRM_COM',              vfx_id),
+                        f.create.TaggedValue('_ATN_CRM_LONG_CREATE_DATE', now_ts),
+                        f.create.TaggedValue('_ATN_CRM_LONG_MOD_DATE',    now_ts),
+                        f.create.TaggedValue('_ATN_CRM_LENGTH',           1),
+                        f.create.TaggedValue('_ATN_CRM_ID',               _uuid.uuid4().hex),
+                    ]
+                    marker['CommentMarkerAttributeList'].value = tv_list
+                    new_markers.append(marker)
+                seq['Components'].value = new_markers
+        f.save()
+    return clip_num
+`;
+
+        window.initPyodide = async function() {
+            if (_py) return _py;
+            if (_promise) return _promise;
+            _promise = (async function() {
+                _py = await loadPyodide();
+                await _py.loadPackage('micropip');
+                await _py.runPythonAsync('import micropip\nawait micropip.install("pyaaf2")');
+                await _py.runPythonAsync(AAF_PYTHON_CODE);
+                return _py;
+            })();
+            return _promise;
+        };
+    })();
+    </script>
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
@@ -187,6 +389,8 @@
         const addTimecode = (tc, fa, fr) => framesToTimecode(parseTimecode(tc, fr) + fa, fr);
         const subtractTimecode = (tc, fs, fr) => framesToTimecode(Math.max(0, parseTimecode(tc, fr) - fs), fr);
         const cmpEventNum = (a, b) => parseInt(a.event_number) - parseInt(b.event_number);
+
+        const CLIP_COLOR_NAMES = ['none','dark blue','steel blue','dark green','cyan','teal','blue','dark grey','sky blue','green','dark purple','dark brown','olive','dark red','purple','mint','crimson','sand','light grey','violet','yellow-olive','brown','medium red','beige','light red','gold','lavender','magenta','yellow-green','orange','pink','rose','light orange'];
 
         // ─── Icon ─────────────────────────────────────────────────────────────────
         const Icon = ({ path }) => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} /></svg>;
@@ -569,6 +773,14 @@
             const [tourStep, setTourStep] = useState(null);
             const [markersDropOpen, setMarkersDropOpen] = useState(false);
             const markersDropRef = useRef(null);
+            const [aafFile, setAafFile] = useState(null);
+            const [aafFilePath, setAafFilePath] = useState('');
+            const [aafDragActive, setAafDragActive] = useState(false);
+            const [aafOpen, setAafOpen] = useState(false);
+            const [aafIncludeMarkers, setAafIncludeMarkers] = useState(true);
+            const [aafClipColor, setAafClipColor] = useState(() => localStorage.getItem('vfx_aafClipColor') || 'none');
+            const [pyodideStatus, setPyodideStatus] = useState('idle');
+            const aafDropRef = useRef(null);
 
             useEffect(() => {
                 if (!markersDropOpen) return;
@@ -586,6 +798,7 @@
             useEffect(() => { localStorage.setItem('vfx_markerTrack', markerTrack); }, [markerTrack]);
             useEffect(() => { localStorage.setItem('vfx_markerColor', markerColor); }, [markerColor]);
             useEffect(() => { localStorage.setItem('vfx_markerPosition', markerPosition); }, [markerPosition]);
+            useEffect(() => { localStorage.setItem('vfx_aafClipColor', aafClipColor); }, [aafClipColor]);
             useEffect(() => { if (edlData) localStorage.setItem('vfx_edlData', JSON.stringify(edlData)); else localStorage.removeItem('vfx_edlData'); }, [edlData]);
             useEffect(() => { localStorage.setItem('vfx_edlFilePath', edlFilePath); }, [edlFilePath]);
             useEffect(() => { if (binData) localStorage.setItem('vfx_binData', JSON.stringify(binData)); else localStorage.removeItem('vfx_binData'); }, [binData]);
@@ -828,17 +1041,16 @@
 
             const clearChangelist = () => {
                 if (!edlData) return;
-                const prevFilename = edlData?.edl_metadata?.prevEdlFilename;
-                if (prevFilename && prevFilename !== edlFilePath && edlDb[prevFilename]) {
-                    const entry = edlDb[prevFilename];
-                    const cleanData = {
-                        ...entry.edlData,
-                        events: entry.edlData.events.map(({ changeStatus, reelMismatch, prevVfxId, prevSourceIn, prevSourceOut, prevReel, ...e }) => e)
-                    };
-                    setEdlData(cleanData);
-                    setEdlFilePath(prevFilename);
-                    setStatus('Changelist cleared');
-                }
+                const { prevEdlFilename, ...cleanMeta } = edlData.edl_metadata;
+                const cleanData = {
+                    ...edlData,
+                    edl_metadata: cleanMeta,
+                    events: edlData.events
+                        .filter(e => e.changeStatus !== 'removed')
+                        .map(({ changeStatus, reelMismatch, prevVfxId, prevSourceIn, prevSourceOut, prevReel, ...e }) => e)
+                };
+                setEdlData(cleanData);
+                setStatus('Changelist cleared');
             };
 
             const clearEdlDb = () => {
@@ -954,6 +1166,73 @@
                     content += `${i+1}\t${e['VFX ID']}\t\t\t${statusLabel[e.changeStatus] || ''}\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
                 });
                 downloadFile(content, `${bn}_changelist.txt`);
+            };
+
+            const processAafFile = (file) => {
+                const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                if (ext !== '.aaf') { setStatus('Error: Invalid file type. Please upload an AAF file (.aaf)'); return; }
+                setAafFile(file);
+                setAafFilePath(file.name);
+                setStatus(`AAF loaded: ${file.name}`);
+                // Pre-warm Pyodide in background
+                if (window.initPyodide) {
+                    setPyodideStatus('loading');
+                    window.initPyodide()
+                        .then(() => setPyodideStatus('ready'))
+                        .catch(() => setPyodideStatus('error'));
+                }
+            };
+
+            const clearAafData = () => {
+                setAafFile(null);
+                setAafFilePath('');
+                setStatus('AAF data cleared');
+            };
+
+            const exportAAF = async () => {
+                if (!edlData || !aafFile) return;
+                window.VFXLog.log('EXPORT', 'exportAAF', { file: aafFilePath, events: getActiveEvents().length });
+                try {
+                    if (pyodideStatus !== 'ready') {
+                        setPyodideStatus('loading');
+                        setStatus('Loading Python runtime (first time only)...');
+                    } else {
+                        setStatus('Processing AAF...');
+                    }
+                    const py = await window.initPyodide();
+                    setPyodideStatus('ready');
+                    const events = getActiveEvents();
+                    const arrayBuffer = await aafFile.arrayBuffer();
+                    py.FS.writeFile('/tmp/input.aaf', new Uint8Array(arrayBuffer));
+                    py.globals.set('_events_json', JSON.stringify(events.map(e => ({'VFX ID': e['VFX ID']}))));
+                    py.globals.set('_include_markers', aafIncludeMarkers);
+                    py.globals.set('_marker_user', markerUser);
+                    py.globals.set('_marker_color', markerColor);
+                    py.globals.set('_marker_position', markerPosition);
+                    py.globals.set('_clip_color', aafClipColor);
+                    setStatus('Processing AAF...');
+                    await py.runPythonAsync(
+                        'write_aaf_clip_notes(_events_json, "/tmp/input.aaf", "/tmp/output.aaf", ' +
+                        'user=_marker_user, color=_marker_color, position=_marker_position, ' +
+                        'include_markers=_include_markers, clip_color=_clip_color)'
+                    );
+                    const result = py.FS.readFile('/tmp/output.aaf');
+                    try { py.FS.unlink('/tmp/input.aaf'); } catch(e) {}
+                    try { py.FS.unlink('/tmp/output.aaf'); } catch(e) {}
+                    const stem = aafFilePath.replace(/\.[^/.]+$/, '') || (edlData.edl_metadata.edl_filename || 'output');
+                    const downloadName = `${stem}_new.aaf`;
+                    const blob = new Blob([result], { type: 'application/octet-stream' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = downloadName;
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    setStatus(`Downloaded: ${downloadName}`);
+                } catch(err) {
+                    window.VFXLog.log('ERROR', 'exportAAF', { error: String(err) });
+                    setStatus(`Error: ${err.message || String(err)}`);
+                    setPyodideStatus('error');
+                }
             };
 
             const exportFinalVFXEDL = () => {
@@ -1130,6 +1409,82 @@
                                         {/* DB Export */}
                                         <div id="tour-db-export" className="border border-[#1a2530] rounded-xl p-2 flex justify-center">
                                             <button onClick={exportGoogleTab} disabled={!edlData} style={{width: 'calc(50% - 4px)'}} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">DB Export</button>
+                                        </div>
+
+                                        {/* AAF Clip Notes */}
+                                        <div id="tour-aaf" className="border border-[#1a2530] rounded-xl p-2 mt-3">
+                                            <div className="flex items-center justify-between mb-2 px-1">
+                                                <span className="text-xs text-gray-500 uppercase">AAF Clip Notes</span>
+                                                {pyodideStatus === 'loading' && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700/50 text-gray-400">Loading runtime...</span>}
+                                                {pyodideStatus === 'ready'   && <span className="text-xs px-2 py-0.5 rounded-full bg-[#14b8a6]/20 text-[#14b8a6]">ready</span>}
+                                                {pyodideStatus === 'error'   && <span className="text-xs px-2 py-0.5 rounded-full bg-red-900/30 text-red-400">error</span>}
+                                            </div>
+                                            <button
+                                                onClick={() => { if (edlData) setAafOpen(o => !o); }}
+                                                disabled={!edlData}
+                                                className="w-full px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition flex items-center justify-between btn-teal"
+                                            >
+                                                <span>Export AAF with VFX IDs</span>
+                                                {edlData && <span className="text-xs opacity-70">{aafOpen ? '▲' : '▼'}</span>}
+                                            </button>
+                                            {aafOpen && (
+                                                <div className="mt-2 space-y-2">
+                                                    <DropZone
+                                                        dragActive={aafDragActive}
+                                                        onDragEnter={(e) => handleDrag(e, setAafDragActive, true)}
+                                                        onDragLeave={(e) => handleDrag(e, setAafDragActive, false)}
+                                                        onDrop={(e) => handleDrop(e, processAafFile, setAafDragActive)}
+                                                        onChange={(e) => e.target.files[0] && processAafFile(e.target.files[0])}
+                                                        accept=".aaf"
+                                                        iconPath="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 11l3 3m0 0l3-3m-3 3V4"
+                                                        inactiveLabel="Drag & drop AAF file or click to browse"
+                                                        activeLabel="Drop AAF here"
+                                                        fileType=".aaf"
+                                                        loaded={!!aafFile}
+                                                        loadedText={aafFilePath}
+                                                        filePath=""
+                                                        onClear={aafFile ? clearAafData : null}
+                                                        clearLabel="AAF"
+                                                    />
+                                                    <div className="flex items-center gap-2 px-1">
+                                                        <input type="checkbox" checked={aafIncludeMarkers} onChange={(e) => setAafIncludeMarkers(e.target.checked)} className="w-4 h-4 accent-[#14b8a6] cursor-pointer" />
+                                                        <span className="text-xs text-gray-300">Include markers</span>
+                                                    </div>
+                                                    {aafIncludeMarkers && (
+                                                        <div className="grid grid-cols-3 gap-2 px-1">
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">User</label>
+                                                                <input type="text" value={markerUser} onChange={(e) => setMarkerUser(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] border border-[#2a3545] rounded text-xs text-white focus:outline-none focus:border-[#14b8a6]" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">Position</label>
+                                                                <select value={markerPosition} onChange={(e) => setMarkerPosition(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] border border-[#2a3545] rounded text-xs text-white focus:outline-none focus:border-[#14b8a6]">
+                                                                    {[['start','Start'],['middle','Middle']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs text-gray-500 mb-1">Color</label>
+                                                                <select value={markerColor} onChange={(e) => setMarkerColor(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] border border-[#2a3545] rounded text-xs text-white focus:outline-none focus:border-[#14b8a6]">
+                                                                    {['red','green','blue','cyan','magenta','yellow','black','white'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase()+c.slice(1)}</option>)}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div className="px-1">
+                                                        <label className="block text-xs text-gray-500 mb-1">Clip Color</label>
+                                                        <select value={aafClipColor} onChange={(e) => setAafClipColor(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] border border-[#2a3545] rounded text-xs text-white focus:outline-none focus:border-[#14b8a6]">
+                                                            {CLIP_COLOR_NAMES.map(c => <option key={c} value={c}>{c === 'none' ? 'None' : c.charAt(0).toUpperCase()+c.slice(1)}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <button
+                                                        onClick={exportAAF}
+                                                        disabled={!aafFile || pyodideStatus === 'loading'}
+                                                        className="w-full px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal"
+                                                    >
+                                                        {pyodideStatus === 'loading' ? 'Loading runtime...' : 'Export AAF'}
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
