@@ -597,7 +597,7 @@
                 const lines = edlText.split('\n');
                 const edlData = { edl_metadata: { edl_title: '', edl_fcm: '' }, events: [] };
                 let lastEvent = null;
-                const edlLineRegex = /^(\d+)\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})$/;
+                const edlLineRegex = /^(\d+)\s+(\S+)\s+(\w+)\s+(\w+)\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})$/;
 
                 for (let line of lines) {
                     line = line.trim();
