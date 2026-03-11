@@ -163,6 +163,28 @@
             box-shadow: 0 0 20px rgba(20,184,166,0.4);
             animation: none;
         }
+        .theme-fab {
+            position: fixed;
+            bottom: 28px;
+            left: 28px;
+            z-index: 900;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #14b8a6;
+            color: #0a0f14;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 12px rgba(20,184,166,0.3);
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+        .theme-fab:hover {
+            background: #0d9488;
+            box-shadow: 0 0 20px rgba(20,184,166,0.4);
+        }
         .tour-fab-icon {
             width: 20px; height: 20px;
             border-radius: 50%;
@@ -1057,12 +1079,6 @@
                                 <h1 className="mb-0 text-white text-right" style={{fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontStyle: 'italic', fontSize: '68px'}}>VFX Turnover Tool</h1>
                                 <p className="text-gray-400 mb-4 text-right" style={{fontFamily: "'Barlow', sans-serif", fontWeight: 300, fontSize: '20px'}}>Manage VFX Workflow in Avid Media Composer</p>
                                 <div className="flex gap-2 justify-end items-center">
-                                    <button onClick={() => setIsDark(d => !d)} className="p-2 rounded-lg bg-[#1a2530] t-raised text-gray-400 hover:text-[#14b8a6] border border-[#2a3545] t-border-lite transition" title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
-                                        {isDark
-                                            ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                                            : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
-                                        }
-                                    </button>
                                     {['main', 'info'].map(p => (
                                         <button key={p} onClick={() => setCurrentPage(p)} className={`px-4 py-2 text-sm rounded-lg transition ${currentPage === p ? 'bg-[#14b8a6] text-[#0a0f14] font-medium btn-teal' : 'bg-[#1a2530] t-raised text-gray-300 t-text-2 hover:bg-[#243040] t-hover-nav border border-[#2a3545] t-border-lite'}`}>
                                             {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -1277,6 +1293,12 @@
                         </div>
                     </div>
                 </div>
+                <button className="theme-fab" onClick={() => setIsDark(d => !d)} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
+                    {isDark
+                        ? <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        : <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                    }
+                </button>
                 {tourStep === null && (
                     <button className="tour-fab" onClick={() => { setCurrentPage('main'); setTourStep(0); }}>
                         <span className="tour-fab-icon">?</span>
