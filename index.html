@@ -68,7 +68,7 @@
         /* NOTE: Tailwind CDN escapes # as \# in generated class selectors,   */
         /* so .bg-[#0a0f14] becomes .bg-\[\#0a0f14\] in the stylesheet.       */
         [data-theme="light"] body    { background: #f1f5f9; }
-        [data-theme="light"] #bg-shader { opacity: 0.04; }
+        [data-theme="light"] #bg-shader { opacity: 1; }
 
         /* Core backgrounds — two selectors per rule: \# (Tailwind CDN) and # (fallback) */
         [data-theme="light"] .bg-\[\#0a0f14\] { background-color: #f1f5f9 !important; }
@@ -1355,7 +1355,7 @@
             var vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}';
             var fs = [
                 'precision mediump float;',
-                'uniform float t; uniform vec2 r;',
+                'uniform float t; uniform vec2 r; uniform float uTheme;',
                 'void main(){',
                 '  vec2 uv=gl_FragCoord.xy/r;',
                 '  float gx=step(0.97,fract(uv.x*48.));',
@@ -1363,10 +1363,11 @@
                 '  float g=max(gx,gy);',
                 '  float sc=sin(uv.y*300.+t*0.4)*0.008+0.008;',
                 '  float vg=1.-smoothstep(0.5,1.2,length(uv-0.5)*1.5);',
-                '  vec3 c=vec3(0.039,0.059,0.078);',
-                '  c+=g*vec3(0.,0.22,0.20);',
-                '  c+=sc*vec3(0.,0.07,0.07);',
-                '  gl_FragColor=vec4(c*vg,1.);',
+                '  vec3 dc=vec3(0.039,0.059,0.078)+g*vec3(0.,0.22,0.20)+sc*vec3(0.,0.07,0.07);',
+                '  dc*=vg;',
+                '  vec3 lc=vec3(0.945,0.961,0.976)-g*vec3(0.10,0.09,0.08)-sc*vec3(0.015,0.015,0.015);',
+                '  lc*=(vg*0.6+0.4);',
+                '  gl_FragColor=vec4(mix(dc,lc,uTheme),1.);',
                 '}'
             ].join('\n');
 
@@ -1388,6 +1389,7 @@
 
             var uT = gl.getUniformLocation(prog, 't');
             var uR = gl.getUniformLocation(prog, 'r');
+            var uTh = gl.getUniformLocation(prog, 'uTheme');
 
             function resize() {
                 canvas.width = window.innerWidth; canvas.height = window.innerHeight;
@@ -1395,10 +1397,17 @@
             }
             resize(); window.addEventListener('resize', resize);
 
-            var t0 = Date.now();
+            var t0 = Date.now(), lastT = t0;
+            var themeVal = document.documentElement.dataset.theme === 'light' ? 1.0 : 0.0;
             (function frame() {
-                gl.uniform1f(uT, (Date.now() - t0) / 1000);
+                var now = Date.now();
+                var dt = Math.min((now - lastT) / 1000, 0.05); lastT = now;
+                var themeTarget = document.documentElement.dataset.theme === 'light' ? 1.0 : 0.0;
+                if (themeVal < themeTarget) themeVal = Math.min(themeTarget, themeVal + dt * 2.5);
+                else themeVal = Math.max(themeTarget, themeVal - dt * 2.5);
+                gl.uniform1f(uT, (now - t0) / 1000);
                 gl.uniform2f(uR, canvas.width, canvas.height);
+                gl.uniform1f(uTh, themeVal);
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                 requestAnimationFrame(frame);
             })();
