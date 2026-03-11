@@ -430,7 +430,7 @@
                     </div>
 
                     <p className="mb-3">When the EDL has <strong className="text-white">no LOC markers at all</strong>, VFX IDs are auto-generated for every clip. When the EDL contains <strong className="text-white">any LOC markers</strong> (a marked EDL), the tool reads VFX IDs directly from those markers and never overwrites them. Clips without a marker in a marked EDL are flagged with a <strong className="text-purple-400">MISSING VFX ID</strong> warning — assign the marker in Avid and re-export the EDL. Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs before exporting the EDL.</p>
-                    <img src="imgs/01_create_edl.png" alt="Configuration of the list tool in Avid Media Composer for EDL exporting" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                    <img src="imgs/01_create_edl.png" alt="Configuration of the list tool in Avid Media Composer for EDL exporting" className="rounded-lg border border-gray-700 mt-2 max-w-lg" />
                     <p className="text-xs text-gray-500 mt-1">Configuration of the list tool in Avid Media Composer for EDL exporting.</p>
                     <p className="mt-3">Once exported, load the <code className="bg-[#1a2530] t-raised px-1 rounded">.edl</code> file into the tool by <strong className="text-white">dragging and dropping it</strong> onto the drop zone in the main window, or clicking the drop zone to <strong className="text-white">browse your local disk</strong>.</p>
                 </div>
@@ -443,7 +443,7 @@
                 <div>
                     <h3 className="text-base font-semibold text-[#14b8a6] mb-2">3. Export Frames</h3>
                     <p className="mb-3">Export markers from Avid as JPGs to use them to build a VFX Shots database.</p>
-                    <img src="imgs/02_export_frames.png" alt="Export settings for frame extraction at marker's position" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                    <img src="imgs/02_export_frames.png" alt="Export settings for frame extraction at marker's position" className="rounded-lg border border-gray-700 mt-2 max-w-lg" />
                     <p className="text-xs text-gray-500 mt-1">Export settings for frame extraction at marker's position.</p>
                     <p className="mt-3">If you use <strong className="text-white">Google Sheets</strong> to manage your VFX database, you can automatically import the exported frame images into your sheet using <a href="https://github.com/pnardese/insertShotImages" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">insertShotImages</a> — a companion script that reads the exported JPGs and inserts them into the corresponding rows of your Google Sheet.</p>
                 </div>
@@ -499,19 +499,19 @@
                     <h3 className="text-base font-semibold text-[#14b8a6] mb-2">7. Export Pulls ALE</h3>
                     <p className="mb-3">Export Pulls ALE to create pulls (subclips with VFX IDs as names from the master clips). After selecting master clips in bin, drag ALE file on bin. Import settings: <em className="text-white">Merge events with known sources and automatically create subclips</em></p>
                     <p className="mb-3">The <strong className="text-white">Resolution</strong> setting controls the <code className="bg-[#1a2530] t-raised px-1 rounded">VIDEO_FORMAT</code> field in the ALE header (default: <code className="bg-[#1a2530] t-raised px-1 rounded">1080</code>). Set it to match your project format (e.g. <code className="bg-[#1a2530] t-raised px-1 rounded">2160</code> for 4K).</p>
-                    <img src="imgs/03_merge_events_ale.png" alt="Import settings" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                    <img src="imgs/03_merge_events_ale.png" alt="Import settings" className="rounded-lg border border-gray-700 mt-2 max-w-lg" />
                     <p className="text-xs text-gray-500 mt-1">Import settings.</p>
                 </div>
                 <div>
                     <h3 className="text-base font-semibold text-[#14b8a6] mb-2">8. Export Pulls EDL</h3>
                     <p className="mb-3">Export Pulls EDL to create a timeline with the pull subclips. Import the EDL into Avid bin, relink to the pull subclips using Names.</p>
-                    <img src="imgs/04_relink_edl_pulls_v02.png" alt="Relink configuration" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                    <img src="imgs/04_relink_edl_pulls_v02.png" alt="Relink configuration" className="rounded-lg border border-gray-700 mt-2 max-w-lg" />
                     <p className="text-xs text-gray-500 mt-1">Relink configuration.</p>
                 </div>
                 <div>
                     <h3 className="text-base font-semibold text-[#14b8a6] mb-2">9. VFX Cut-ins</h3>
                     <p className="mb-3">When you receive incoming VFX (.mov files), you can import them into Avid, export the bin in TAB format to create an EDL for cutting in the VFX into the timeline. Columns: <strong className="text-white">Color</strong>, <strong className="text-white">Name</strong>, <strong className="text-white">Duration</strong>, <strong className="text-white">Start</strong>, <strong className="text-white">End</strong>, <strong className="text-white">Tape</strong>.</p>
-                    <img src="imgs/05_vfx_cutins.png" alt="Columns to export from Avid bin as TAB text file" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
+                    <img src="imgs/05_vfx_cutins.png" alt="Columns to export from Avid bin as TAB text file" className="rounded-lg border border-gray-700 mt-2 max-w-lg" />
                     <p className="text-xs text-gray-500 mt-1">Columns to export from Avid bin as TAB text file.</p>
                     <p className="mt-3">Relink imported EDL to mov files like in Pulls EDL.</p>
                 </div>
