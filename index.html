@@ -391,13 +391,8 @@
                 <p><strong className="text-white">EDL:</strong> .edl (File_129, CMX 3600) | <strong className="text-white">Bin:</strong> .txt</p>
                 <h3 className="text-base font-semibold text-[#14b8a6] mt-6">Contact</h3>
                 <p><a href="mailto:pnardese@gmail.com" className="text-[#14b8a6] hover:underline">pnardese@gmail.com</a></p>
-            </div>
-        );
 
-        // ─── HelpPage ─────────────────────────────────────────────────────────────
-        const HelpPage = () => (
-            <div className="max-w-none text-sm text-gray-300 space-y-6">
-                <h2 className="text-xl font-semibold text-white">Help</h2>
+                <div className="border-t border-[#1a2530] t-border mt-8 pt-6 space-y-6">
                 <div>
                     <h3 className="text-base font-semibold text-[#14b8a6] mb-2">1. Create EDL from Avid</h3>
                     <p className="mb-3">Create an EDL (File_129 or CMX3600) from the Avid video track containing only shots planned for VFX. In List Options in Avid, check: <strong className="text-white">Clip Names</strong>, <strong className="text-white">Source File Name</strong>, and <strong className="text-white">Markers</strong>.</p>
@@ -496,6 +491,10 @@
                     <img src="imgs/05_vfx_cutins.png" alt="Columns to export from Avid bin as TAB text file" className="rounded-lg border border-gray-700 mt-2 max-w-full" />
                     <p className="text-xs text-gray-500 mt-1">Columns to export from Avid bin as TAB text file.</p>
                     <p className="mt-3">Relink imported EDL to mov files like in Pulls EDL.</p>
+                </div>
+                <div>
+                    <h3 className="text-base font-semibold text-[#14b8a6] mb-2">10. <strong className="text-white">Always double-check!!</strong></h3>
+                </div>
                 </div>
             </div>
         );
@@ -1063,7 +1062,7 @@
                                             : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
                                         }
                                     </button>
-                                    {['main', 'info', 'help'].map(p => (
+                                    {['main', 'info'].map(p => (
                                         <button key={p} onClick={() => setCurrentPage(p)} className={`px-4 py-2 text-sm rounded-lg transition ${currentPage === p ? 'bg-[#14b8a6] text-[#0a0f14] font-medium btn-teal' : 'bg-[#1a2530] t-raised text-gray-300 t-text-2 hover:bg-[#243040] t-hover-nav border border-[#2a3545] t-border-lite'}`}>
                                             {p.charAt(0).toUpperCase() + p.slice(1)}
                                         </button>
@@ -1269,7 +1268,6 @@
                             )}
 
                             {currentPage === 'info' && <InfoPage />}
-                            {currentPage === 'help' && <HelpPage />}
                             </div>
                         </div>
                         <div className="text-center text-gray-500 text-sm mt-8 pb-4">
