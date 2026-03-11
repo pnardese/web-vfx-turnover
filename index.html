@@ -1362,7 +1362,7 @@
                 '  float gy=step(0.97,fract(uv.y*27.));',
                 '  float g=max(gx,gy);',
                 '  float sc=sin(uv.y*300.+t*0.4)*0.008+0.008;',
-                '  float vg=1.-smoothstep(0.5,1.2,length(uv-0.5)*1.5);',
+                '  float vg=1.-smoothstep(0.5,1.2,length(uv-0.5)*1.1);',
                 '  vec3 dc=vec3(0.039,0.059,0.078)+g*vec3(0.,0.22,0.20)+sc*vec3(0.,0.07,0.07);',
                 '  dc*=vg;',
                 '  vec3 lc=vec3(0.945,0.961,0.976)-g*vec3(0.10,0.09,0.08)-sc*vec3(0.015,0.015,0.015);',
