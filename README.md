@@ -15,7 +15,7 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 - **Persistent File Data** - Loaded EDL and AVID Bin files are preserved across browser sessions
 - **Clear Data Controls** - Easily clear loaded files with one-click buttons
 - **Change Tracking** - Compare new EDL with cached version: new clips in green (NEW - NEED TO PULL), removed in red, trimmed clips flagged as TRIMMED BUT NO NEED TO PULL (yellow) or TRIMMED - NEED TO PULL (orange), clips missing a VFX ID in purple, marker ID changed between versions in amber (CHECK IN AVID), reel mismatches shown with a warning banner; preview table sorted by EDL event order
-- **Changelist Export** - Export the full changelist as a tab-delimited file for import into spreadsheets or databases
+- **Changelist Export** - Export the full changelist as a tab-delimited TXT file for import into spreadsheets or databases, or as an Avid marker file (configurable user, track, and color; marker position fixed at one third of each clip) with VFX ID and status as marker comment
 - **Incoming VFX EDL** - Match VFX vendor clips to original EDL by source timecodes
 
 ## Workflow Guide
@@ -139,7 +139,10 @@ Preview table rows are sorted by EDL event order. Removed events appear at the e
 
 Removed VFX IDs are shown for reference but are excluded from all exports.
 
-The **Export Changelist** button (top-right of the Preview panel) downloads a tab-delimited `.txt` file with one row per event and a `Status` column populated with `NEW`, `REMOVED`, `CHANGED - NO PULL NEEDED`, or `NEED PULL`. The file uses the same column structure as the DB Export and can be imported directly into any spreadsheet or database.
+The **Export Changelist** section (top of the Preview panel) offers two export formats:
+
+- **TXT file** — tab-delimited file with one row per event and a `Status` column populated with `NEW`, `REMOVED`, `CHANGED - NO PULL NEEDED`, `NEED PULL`, or `MISSING VFX ID`. Uses the same column structure as DB Export and can be imported into any spreadsheet or database.
+- **Markers** — Avid marker file for changed clips only (excluding removed events). The marker is placed at one third of each clip's record duration. The marker comment is `VFX ID STATUS` (e.g. `GDN_033_0010 NEW`), or `NO ID MISSING VFX ID` for clips with no VFX ID assigned. User, track, and color are configurable via the dropdown; position is fixed at one third.
 
 ## Export Options
 
@@ -150,7 +153,8 @@ The **Export Changelist** button (top-right of the Preview panel) downloads a ta
 | **ALE Pulls** | Avid Log Exchange file with handles for creating pulls |
 | **Pulls EDL** | EDL for cutting in VFX pulls |
 | **DB Export** | Tab-delimited file for spreadsheet / database import |
-| **Export Changelist** | Tab-delimited changelist with Status column; includes all events (new, removed, trimmed, unchanged) |
+| **Changelist TXT** | Tab-delimited changelist with Status column; includes all events (new, removed, trimmed, unchanged, missing ID) |
+| **Changelist Markers** | Avid marker file for changed clips; marker at 1/3 of record duration; comment is `VFX ID STATUS` or `NO ID MISSING VFX ID` |
 
 ## Supported File Formats
 

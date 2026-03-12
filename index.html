@@ -87,6 +87,21 @@
         [data-theme="light"] .text-gray-500 { color: #94a3b8 !important; }
         [data-theme="light"] .text-gray-600 { color: #94a3b8 !important; }
 
+        /* Status / change colours — darken for light theme readability */
+        [data-theme="light"] .text-green-400  { color: #15803d !important; }
+        [data-theme="light"] .text-red-400    { color: #b91c1c !important; }
+        [data-theme="light"] .text-red-300    { color: #dc2626 !important; }
+        [data-theme="light"] .text-red-500    { color: #991b1b !important; }
+        [data-theme="light"] .text-yellow-400 { color: #854d0e !important; }
+        [data-theme="light"] .text-orange-400 { color: #9a3412 !important; }
+        [data-theme="light"] .text-purple-400 { color: #6b21a8 !important; }
+        [data-theme="light"] .text-purple-300 { color: #7e22ce !important; }
+        [data-theme="light"] .text-purple-500 { color: #581c87 !important; }
+        [data-theme="light"] .text-amber-400  { color: #92400e !important; }
+        [data-theme="light"] .text-amber-300  { color: #b45309 !important; }
+        [data-theme="light"] .text-amber-500  { color: #78350f !important; }
+        [data-theme="light"] .text-amber-600  { color: #78350f !important; }
+
         /* Hover states */
         [data-theme="light"] .hover\:bg-\[\#243040\]:hover         { background-color: #e2e8f0 !important; }
         [data-theme="light"] .hover\:bg-\[\#1a2530\]\/50:hover     { background-color: rgba(203,213,225,0.5) !important; }
@@ -319,16 +334,53 @@
         );
 
         // ─── EDLPreview ───────────────────────────────────────────────────────────
-        const EDLPreview = ({ edlData, edlFilePath, onExportChangelist, onClearChangelist }) => {
-            const hasChangelist = edlData.events.some(e => ['new','removed','trimmed_ok','trimmed_pull'].includes(e.changeStatus));
+        const EDLPreview = ({ edlData, edlFilePath, onExportChangelist, onExportChangelistMarkers, onClearChangelist, markerUser, setMarkerUser, markerTrack, setMarkerTrack, markerColor, setMarkerColor }) => {
+            const hasChangelist = edlData.events.some(e => ['new','removed','trimmed_ok','trimmed_pull','missing_id','marker_changed'].includes(e.changeStatus));
+            const [clMarkersDropOpen, setClMarkersDropOpen] = React.useState(false);
+            const clMarkersDropRef = React.useRef(null);
+            React.useEffect(() => {
+                if (!clMarkersDropOpen) return;
+                const handler = (e) => { if (clMarkersDropRef.current && !clMarkersDropRef.current.contains(e.target)) setClMarkersDropOpen(false); };
+                document.addEventListener('mousedown', handler);
+                return () => document.removeEventListener('mousedown', handler);
+            }, [clMarkersDropOpen]);
             return (
             <div className="bg-[#0a0f14] t-bg border border-[#1a2530] t-border rounded-xl p-4 mb-6">
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex justify-between items-center mb-2">
                     <h3 className="text-xs font-medium text-[#14b8a6] uppercase">Preview</h3>
-                    <div className="flex gap-2">
-                        {hasChangelist && <button onClick={onClearChangelist} className="px-3 py-1 rounded-lg text-xs border border-gray-600 text-gray-400 bg-transparent hover:border-gray-400 hover:text-white transition">Clear changelist</button>}
-                        <button onClick={onExportChangelist} className="px-3 py-1 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium rounded-lg text-xs transition btn-teal">Export Changelist</button>
-                    </div>
+                </div>
+                <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs text-gray-500">Export changelist</span>
+                    <button onClick={onExportChangelist} className="px-3 py-1 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium rounded-lg text-xs transition btn-teal">TXT file</button>
+                    {hasChangelist && (
+                        <div className="relative" ref={clMarkersDropRef}>
+                            <div className="flex rounded-lg overflow-hidden">
+                                <button onClick={onExportChangelistMarkers} className="px-3 py-1 bg-[#14b8a6] hover:bg-[#0d9488] text-[#0a0f14] font-medium text-xs transition btn-teal rounded-none">Markers</button>
+                                <button onClick={() => setClMarkersDropOpen(o => !o)} className="px-1.5 py-1 bg-[#0d9488] hover:bg-[#0b7a6f] text-[#0a0f14] text-xs transition border-l border-[#0b7a6f]" title="Marker options">▾</button>
+                            </div>
+                            {clMarkersDropOpen && (
+                                <div className="absolute top-full left-0 mt-1 z-50 bg-[#0d1318] t-card border border-[#2a3545] t-border-lite rounded-lg p-3 w-48 space-y-2 shadow-xl">
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">User info</label>
+                                        <input type="text" value={markerUser} onChange={(e) => setMarkerUser(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] t-bg border border-[#2a3545] t-border-lite rounded text-xs text-white t-text-1 focus:outline-none focus:border-[#14b8a6]" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Track</label>
+                                        <select value={markerTrack} onChange={(e) => setMarkerTrack(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] t-bg border border-[#2a3545] t-border-lite rounded text-xs text-white t-text-1 focus:outline-none focus:border-[#14b8a6]">
+                                            {['TC','V1','V2','V3','V4','V5','V6','V7','V8'].map(v => <option key={v} value={v}>{v}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Color</label>
+                                        <select value={markerColor} onChange={(e) => setMarkerColor(e.target.value)} className="w-full px-2 py-1.5 bg-[#0a0f14] t-bg border border-[#2a3545] t-border-lite rounded text-xs text-white t-text-1 focus:outline-none focus:border-[#14b8a6]">
+                                            {['red','green','blue','cyan','magenta','yellow','black','white'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {hasChangelist && <button onClick={onClearChangelist} className="px-3 py-1 rounded-lg text-xs border border-gray-600 text-gray-400 bg-transparent hover:border-gray-400 hover:text-white transition">Clear changelist</button>}
                 </div>
                 <div className="text-sm text-gray-300 space-y-1 mb-4">
                     <p><span className="font-medium text-white">File:</span> {edlFilePath || `${edlData.edl_metadata.edl_filename}.edl`}</p>
@@ -346,7 +398,7 @@
                     <div className="bg-purple-900/20 border border-purple-800 rounded-lg p-3 mb-3 text-xs">
                         <span className="text-purple-400 font-semibold uppercase">Missing VFX ID — </span>
                         <span className="text-purple-300">the following clips have no VFX ID assigned: </span>
-                        <span className="text-purple-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'missing_id').sort(cmpEventNum).map(e => `event ${e.event_number}${e.reel ? ` (${e.reel})` : ''}${e.prevVfxId ? ` — was: ${e.prevVfxId}` : ''}`).join(', ')}</span>
+                        <span className="text-purple-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'missing_id').sort(cmpEventNum).map(e => `event ${e.event_number}${e.reel ? ` (${e.reel})` : ''}`).join(', ')}</span>
                     </div>
                 )}
                 {edlData.events.some(e => e.reelMismatch) && (
@@ -360,7 +412,7 @@
                     <div className="bg-amber-900/20 border border-amber-800 rounded-lg p-3 mb-3 text-xs">
                         <span className="text-amber-400 font-semibold uppercase">Marker ID changed — check in Avid — </span>
                         <span className="text-amber-300">the following clips have a different VFX ID in the new EDL markers: </span>
-                        <span className="text-amber-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'marker_changed').map(e => `${e['VFX ID']}${e.prevVfxId ? ` (was: ${e.prevVfxId})` : ' (new marker)'}`).join(', ')}</span>
+                        <span className="text-amber-400 font-mono">{edlData.events.filter(e => e.changeStatus === 'marker_changed').map(e => e['VFX ID']).join(', ')}</span>
                     </div>
                 )}
                 <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#1a2530] t-border rounded-lg">
@@ -372,7 +424,7 @@
                             {[...edlData.events].sort((a, b) => { const n = cmpEventNum(a, b); return n !== 0 ? n : (a['VFX ID'] || '').localeCompare(b['VFX ID'] || ''); }).map((e, i) => (
                                 <tr key={i} style={{"--row-i": i}} className={`border-b border-[#1a2530] t-border t-hover-row hover:bg-[#1a2530]/50 table-row-anim ${e.changeStatus === 'missing_id' ? 'border-l-2 border-l-purple-500' : e.changeStatus === 'marker_changed' ? 'border-l-2 border-l-amber-500' : e.reelMismatch ? 'border-l-2 border-l-red-500' : ''} ${e.changeStatus === 'new' ? 'bg-green-900/20' : e.changeStatus === 'removed' ? 'bg-red-900/20' : e.changeStatus === 'trimmed_ok' ? 'bg-yellow-900/20' : e.changeStatus === 'trimmed_pull' ? 'bg-orange-900/20' : e.changeStatus === 'missing_id' ? 'bg-purple-900/20' : e.changeStatus === 'marker_changed' ? 'bg-amber-900/20' : ''}`}>
                                     <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.event_number}</td>
-                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'missing_id' ? 'text-purple-400 font-semibold italic' : e.changeStatus === 'marker_changed' ? 'text-amber-400 font-semibold' : e.reelMismatch ? 'text-red-400 font-semibold' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID'] || '[NO ID]'}{e.changeStatus === 'missing_id' && e.prevVfxId && <span className="ml-1 text-purple-500 font-normal not-italic text-xs">(was: {e.prevVfxId})</span>}{e.changeStatus === 'marker_changed' && e.prevVfxId && <span className="ml-1 text-amber-500 font-normal text-xs">(was: {e.prevVfxId})</span>}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'new' ? 'text-green-400 font-semibold' : e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'missing_id' ? 'text-purple-400 font-semibold italic' : e.changeStatus === 'marker_changed' ? 'text-amber-400 font-semibold' : e.reelMismatch ? 'text-red-400 font-semibold' : e.LOC ? 'text-[#14b8a6] font-semibold' : ''}`}>{e['VFX ID'] || '[NO ID]'}</td>
                                     <td className="px-3 py-2 text-xs">
                                         {e.changeStatus === 'new' && <span className="text-green-400 font-medium">NEW - NEED TO PULL</span>}
                                         {e.changeStatus === 'removed' && <span className="text-red-400 font-medium">REMOVED</span>}
@@ -458,7 +510,7 @@
                 </div>
                 <div>
                     <h3 className="text-base font-semibold text-[#14b8a6] mb-2">4. Export TAB Text Files</h3>
-                    <p className="mb-3">Export TAB text files with VFX IDs info, that can be imported in any database/spreadsheet to build a VFX shot database. The <strong className="text-white">Changelist Export</strong> uses the same columns, with <code className="bg-[#1a2530] t-raised px-1 rounded">Status</code> populated.</p>
+                    <p className="mb-3">Export TAB text files with VFX IDs info, that can be imported in any database/spreadsheet to build a VFX shot database. The <strong className="text-white">Changelist Export</strong> section (top of Preview panel) offers two formats: <strong className="text-white">TXT file</strong> — same columns as DB Export with <code className="bg-[#1a2530] t-raised px-1 rounded">Status</code> populated (<code className="bg-[#1a2530] t-raised px-1 rounded">NEW</code>, <code className="bg-[#1a2530] t-raised px-1 rounded">REMOVED</code>, <code className="bg-[#1a2530] t-raised px-1 rounded">CHANGED - NO PULL NEEDED</code>, <code className="bg-[#1a2530] t-raised px-1 rounded">NEED PULL</code>, <code className="bg-[#1a2530] t-raised px-1 rounded">MISSING VFX ID</code>); and <strong className="text-white">Markers</strong> — an Avid marker file for changed clips only (excluding removed), with the marker placed at one third of each clip's record duration. Marker comment is <code className="bg-[#1a2530] t-raised px-1 rounded">VFX ID STATUS</code>, or <code className="bg-[#1a2530] t-raised px-1 rounded">NO ID MISSING VFX ID</code> when no VFX ID is assigned. User, track, and color are configurable via the dropdown.</p>
                     <table className="w-full text-sm border-collapse">
                         <thead>
                             <tr className="text-left text-[#14b8a6] border-b border-[#1a2530] t-border">
@@ -472,7 +524,7 @@
                                 ['Name', 'VFX ID'],
                                 ['Thumbnail', 'Empty — for thumbnail reference'],
                                 ['Comments', 'Empty'],
-                                ['Status', 'Empty in DB Export; NEW / REMOVED / CHANGED - NO PULL NEEDED / NEED PULL in Changelist'],
+                                ['Status', 'Empty in DB Export; NEW / REMOVED / CHANGED - NO PULL NEEDED / NEED PULL / MISSING VFX ID in Changelist TXT'],
                                 ['Date', 'Empty'],
                                 ['Duration', 'Source clip duration as timecode'],
                                 ['Start', 'Source start timecode'],
@@ -566,7 +618,7 @@
                 targetId: 'tour-preview',
                 scrollBlock: 'start',
                 title: 'Preview & Changelist',
-                content: 'The Preview table shows all VFX shots parsed from the EDL, sorted by EDL event order. Each row displays event number, VFX ID, reel, and source and record timecodes.\n\nWhen you load a new EDL over a previously cached one, the tool compares the two versions and colour-codes each row: green for new shots that need a pull, red for removed shots, yellow for trimmed shots already covered by the existing pull, orange for trimmed shots that require a new pull, purple for clips with no VFX ID assigned, and amber for clips whose marker ID changed between versions (CHECK IN AVID).\n\nWarning banners appear above the table for reel mismatches, missing VFX IDs, and changed marker IDs.\n\nThe Export Changelist button downloads a tab-delimited file with the same columns as DB Export plus a Status column, so you can import the full changelist into any spreadsheet or database.'
+                content: 'The Preview table shows all VFX shots parsed from the EDL, sorted by EDL event order. Each row displays event number, VFX ID, reel, and source and record timecodes.\n\nWhen you load a new EDL over a previously cached one, the tool compares the two versions and colour-codes each row: green for new shots that need a pull, red for removed shots, yellow for trimmed shots already covered by the existing pull, orange for trimmed shots that require a new pull, purple for clips with no VFX ID assigned, and amber for clips whose marker ID changed between versions (CHECK IN AVID).\n\nWarning banners appear above the table for reel mismatches, missing VFX IDs, and changed marker IDs.\n\nThe Export Changelist section offers two formats: TXT file exports a tab-delimited file with all events and a Status column (NEW, REMOVED, CHANGED - NO PULL NEEDED, NEED PULL, MISSING VFX ID); Markers exports an Avid marker file for changed clips only, with the marker placed at one third of each clip\'s record duration and the comment set to VFX ID + status (or NO ID MISSING VFX ID). User, track, and color are configurable via the Markers dropdown.'
             },
             {
                 targetId: 'tour-incoming',
@@ -1061,16 +1113,33 @@
                 downloadFile(content, mkFile(`${bn}_TAB`, '.txt'));
             };
 
+            const exportChangelistMarkers = () => {
+                if (!edlData) return;
+                const fr = Math.round(parseFloat(fps)), bn = getExportBn();
+                const changed = edlData.events.filter(e => e.changeStatus && e.changeStatus !== 'unchanged' && e.changeStatus !== 'removed');
+                window.VFXLog.log('EXPORT', 'exportChangelistMarkers', { count: changed.length });
+                const clStatusLabel = { new: 'NEW', trimmed_ok: 'CHANGED - NO PULL NEEDED', trimmed_pull: 'NEED PULL', missing_id: 'MISSING VFX ID', marker_changed: 'MARKER ID CHANGED' };
+                const content = changed.map(e => {
+                    const startFrames = parseTimecode(e.record_start_TC, fr);
+                    const endFrames = parseTimecode(e.record_end_TC, fr);
+                    const tc = framesToTimecode(Math.floor(startFrames + (endFrames - startFrames) / 3), fr);
+                    const label = e['VFX ID'] ? `${e['VFX ID']} ${clStatusLabel[e.changeStatus] || ''}`.trim() : 'NO ID MISSING VFX ID';
+                    return `${markerUser}\t${tc}\t${markerTrack}\t${markerColor}\t${label}\t1`;
+                }).join('\n');
+                downloadFile(content, mkFile(`${bn}_changelist_markers`, '.txt'));
+            };
+
             const exportChangelist = () => {
                 if (!edlData) return;
                 const changeEvents = edlData.events.filter(e => e.changeStatus && e.changeStatus !== 'unchanged');
                 window.VFXLog.log('EXPORT', 'exportChangelist', { count: changeEvents.length });
                 const fr = Math.round(parseFloat(fps)), bn = getExportBn();
-                const statusLabel = { new: 'NEW', removed: 'REMOVED', trimmed_ok: 'CHANGED - NO PULL NEEDED', trimmed_pull: 'NEED PULL', unchanged: '' };
+                const statusLabel = { new: 'NEW', removed: 'REMOVED', trimmed_ok: 'CHANGED - NO PULL NEEDED', trimmed_pull: 'NEED PULL', unchanged: '', missing_id: 'MISSING VFX ID' };
                 let content = '#\tName\tThumbnail\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
                 edlData.events.forEach((e, i) => {
                     const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
-                    content += `${i+1}\t${e['VFX ID']}\t\t\t${statusLabel[e.changeStatus] || ''}\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
+                    const name = e['VFX ID'] || '[NO ID]';
+                    content += `${i+1}\t${name}\t\t\t${statusLabel[e.changeStatus] || ''}\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
                 });
                 downloadFile(content, mkFile(`${bn}_changelist`, '.txt'));
             };
@@ -1258,7 +1327,7 @@
                                         </div>
                                     </div>
 
-                                    <div id="tour-preview">{edlData && <EDLPreview edlData={edlData} edlFilePath={edlFilePath} onExportChangelist={exportChangelist} onClearChangelist={clearChangelist} />}</div>
+                                    <div id="tour-preview">{edlData && <EDLPreview edlData={edlData} edlFilePath={edlFilePath} onExportChangelist={exportChangelist} onExportChangelistMarkers={exportChangelistMarkers} onClearChangelist={clearChangelist} markerUser={markerUser} setMarkerUser={setMarkerUser} markerTrack={markerTrack} setMarkerTrack={setMarkerTrack} markerColor={markerColor} setMarkerColor={setMarkerColor} />}</div>
 
                                     <div id="tour-incoming" className="pt-6 border-t border-[#1a2530] t-border">
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Incoming VFX EDL</h2>
