@@ -1,4 +1,4 @@
-# VFX Turnover Tool v0.2
+# VFX Turnover Tool v0.3
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
@@ -104,7 +104,7 @@ Relink imported EDL to mov files like in Pulls EDL.
 | Setting | Description | Default |
 |---------|-------------|---------|
 | Film ID | Project identifier used in VFX IDs | FILM_ID |
-| FPS | Frame rate for timecode calculations — dropdown: 23.976, 24, 25, 29.97 | 24 |
+| FPS | Frame rate for timecode calculations — dropdown: 23.976, 24, 25, 29.97, 30, 50, 59.94 | 24 |
 | Resolution | Video format written to ALE `VIDEO_FORMAT` header | 1080 |
 | Pull Handles | Extra frames added to pulls | 10 |
 
@@ -174,7 +174,7 @@ Single-page web application built with:
 
 ### Option 1: Online
 
-Access the tool directly at: [https://pnardese.github.io/web-vfx-turnover/](https://pnardese.github.io/web-vfx-turnover/)
+Access the tool directly at: [https://vfx-turnovers.app/](https://vfx-turnovers.app/)
 
 ### Option 2: Local HTTP Server
 
