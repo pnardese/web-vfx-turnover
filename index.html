@@ -711,7 +711,7 @@
             const [currentPage, setCurrentPage] = useState('main');
             const [edlData, setEdlData] = useState(() => { try { return JSON.parse(localStorage.getItem('vfx_edlData')); } catch { return null; } });
             const [edlFilePath, setEdlFilePath] = useState(() => localStorage.getItem('vfx_edlFilePath') || '');
-            const [filmId, setFilmId] = useState(() => localStorage.getItem('vfx_filmId') || 'FILM_ID');
+            const [filmId, setFilmId] = useState(() => localStorage.getItem('vfx_filmId') || '');
             const [fps, setFps] = useState(() => localStorage.getItem('vfx_fps') || '24');
             const [resolution, setResolution] = useState(() => localStorage.getItem('vfx_resolution') || '1080');
             const [handles, setHandles] = useState(() => { const v = parseInt(localStorage.getItem('vfx_handles')); return isNaN(v) ? 10 : v; });
