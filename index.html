@@ -1080,23 +1080,36 @@
                 downloadFile(content, mkFile(bn, '_subcaps', '.txt'));
             };
 
-            const exportALEPulls = () => {
+            const exportBothPulls = async () => {
                 if (!edlData) return;
-                window.VFXLog.log('EXPORT', 'exportALEPulls', { count: getActiveEvents().length, fps });
+                window.VFXLog.log('EXPORT', 'exportBothPulls', { count: getActiveEvents().length, fps });
                 const fr = Math.round(parseFloat(fps)), bn = getExportBn();
-                let content = `Heading\nFIELD_DELIM\tTABS\nVIDEO_FORMAT\t${resolution}\nAUDIO_FORMAT\t48khz\nFPS\t${fps}\n\nColumn\nName\tTracks\tStart\tEnd\tTape\nData\n\n`;
+                let aleContent = `Heading\nFIELD_DELIM\tTABS\nVIDEO_FORMAT\t${resolution}\nAUDIO_FORMAT\t48khz\nFPS\t${fps}\n\nColumn\nName\tTracks\tStart\tEnd\tTape\nData\n\n`;
                 getActiveEvents().forEach(e => {
-                    content += `${e['VFX ID']}\tV\t${subtractTimecode(e.source_start_TC, handles, fr)}\t${addTimecode(e.source_end_TC, handles, fr)}\t${e.reel}\n`;
+                    aleContent += `${e['VFX ID']}\tV\t${subtractTimecode(e.source_start_TC, handles, fr)}\t${addTimecode(e.source_end_TC, handles, fr)}\t${e.reel}\n`;
                 });
-                downloadFile(content, mkFile(bn, '_pulls', '.ALE'));
-            };
-
-            const exportPullsEDL = () => {
-                if (!edlData) return;
-                window.VFXLog.log('EXPORT', 'exportPullsEDL', { count: getActiveEvents().length });
-                const bn = getExportBn();
-                const content = `TITLE: ${bn}_pulls\nFCM: NON-DROP FRAME\n` + getActiveEvents().map(e => `${e.event_number} ${e['VFX ID']} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}`).join('\n');
-                downloadFile(content, mkFile(bn, '_pulls', '.edl'));
+                const aleFilename = mkFile(bn, '_pulls', '.ALE');
+                const edlContent = `TITLE: ${bn}_pulls\nFCM: NON-DROP FRAME\n` + getActiveEvents().map(e => `${e.event_number} ${e['VFX ID']} ${e.track} ${e.transition} ${e.source_start_TC} ${e.source_end_TC} ${e.record_start_TC} ${e.record_end_TC}`).join('\n');
+                const edlFilename = mkFile(bn, '_pulls', '.edl');
+                if (window.showDirectoryPicker) {
+                    try {
+                        const dirHandle = await window.showDirectoryPicker();
+                        const writeToDir = async (filename, content) => {
+                            const fh = await dirHandle.getFileHandle(filename, { create: true });
+                            const w = await fh.createWritable();
+                            await w.write(content);
+                            await w.close();
+                        };
+                        await writeToDir(aleFilename, aleContent);
+                        await writeToDir(edlFilename, edlContent);
+                        setStatus(`Downloaded: ${aleFilename}, ${edlFilename}`);
+                    } catch (e) {
+                        if (e.name !== 'AbortError') throw e;
+                    }
+                } else {
+                    downloadFile(aleContent, aleFilename);
+                    downloadFile(edlContent, edlFilename);
+                }
             };
 
             const exportGoogleTab = () => {
@@ -1312,10 +1325,9 @@
                                             </div>
 
                                             {/* Pulls */}
-                                            <div id="tour-pulls" className="flex-1 border border-[#1a2530] t-border rounded-xl p-2 grid grid-cols-2 gap-2">
-                                                {[['Pulls ALE', exportALEPulls], ['Pulls EDL', exportPullsEDL]].map(([name, fn]) => (
-                                                    <button key={name} onClick={fn} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] t-disabled disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">{name}</button>
-                                                ))}
+                                            <div id="tour-pulls" className="flex-1 border border-[#1a2530] t-border rounded-xl p-2 flex flex-col gap-1">
+                                                <span className="text-xs text-gray-500 font-medium px-1">Pulls</span>
+                                                <button onClick={exportBothPulls} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] t-disabled disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">ALE + EDL</button>
                                             </div>
                                         </div>
 
