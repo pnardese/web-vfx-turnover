@@ -24,6 +24,8 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 
 Create an EDL (File_129 or CMX3600) from the Avid video track containing only shots planned for VFX. In List Options in Avid, check: **Clip Names**, **Source File Name**, and **Markers**.
 
+> **Before exporting**, simplify the timeline: use **one video track only**, remove all **transitions** and **effects**, and commit all **multicam/MultiGroup** edits.
+
 VFX IDs are created automatically based on the following rule: `Project_ID_Scene_num`, where num is a progressive number like 010, 020, 030, etc.
 
 #### How scene numbers are extracted
