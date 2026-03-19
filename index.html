@@ -1293,7 +1293,9 @@
                                         {/* Markers+Subcaps and Pulls on the same row */}
                                         <div className="flex gap-3 mb-3">
                                             {/* Markers & Subcaps */}
-                                            <div id="tour-markers-subcaps" className="flex-1 border border-[#1a2530] t-border rounded-xl p-2 grid grid-cols-2 gap-2">
+                                            <div id="tour-markers-subcaps" className="flex-1 border border-[#1a2530] t-border rounded-xl p-2 flex flex-col gap-1">
+                                                <span className="text-xs text-gray-500 font-medium px-1">Markers &amp; Subcaps</span>
+                                                <div className="grid grid-cols-2 gap-2 flex-1">
                                                 <div className="relative" ref={markersDropRef}>
                                                     <div className="flex rounded-lg overflow-hidden h-full">
                                                         <button onClick={exportMarkers} disabled={!edlData} className="flex-1 px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] t-disabled disabled:text-gray-600 text-[#0a0f14] font-medium text-sm transition btn-teal rounded-none">Markers</button>
@@ -1327,12 +1329,13 @@
                                                     )}
                                                 </div>
                                                 <button onClick={exportSubcaps} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] t-disabled disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">Subcaps</button>
+                                                </div>
                                             </div>
 
                                             {/* Pulls */}
                                             <div id="tour-pulls" className="flex-1 border border-[#1a2530] t-border rounded-xl p-2 flex flex-col gap-1">
                                                 <span className="text-xs text-gray-500 font-medium px-1">Pulls</span>
-                                                <button onClick={exportBothPulls} disabled={!edlData} className="flex-1 px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] t-disabled disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">ALE + EDL</button>
+                                                <button onClick={exportBothPulls} disabled={!edlData} className="px-3 py-2 bg-[#14b8a6] hover:bg-[#0d9488] disabled:bg-[#1a2530] t-disabled disabled:text-gray-600 text-[#0a0f14] font-medium rounded-lg text-sm transition btn-teal">ALE + EDL</button>
                                             </div>
                                         </div>
 
