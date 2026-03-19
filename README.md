@@ -6,7 +6,7 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 
 ## Features
 
-- **Automatic VFX ID Generation** - Creates VFX IDs based on scene numbers (format: `FILM_ID_SCENE_SHOT`) only when the EDL has no existing markers; if any markers are present, IDs are read directly from the markers and missing ones are flagged as warnings
+- **Automatic VFX ID Generation** - Creates VFX IDs based on scene numbers (format: `Project_ID_SCENE_SHOT`) only when the EDL has no existing markers; if any markers are present, IDs are read directly from the markers and missing ones are flagged as warnings
 - **Support for Existing Markers** - Recognizes LOC lines in EDL files; marker IDs are never overwritten. Marker comments may include a job description after the VFX ID (e.g. `GDN_033_0010 - REMOVE BACKGROUND`) — the VFX ID is read from the first word and the job description is stored separately, included in exported markers and in the TAB `Comments` column
 - **Multiple Export Formats** - Markers, Subcaps, ALE, EDL, and spreadsheet formats
 - **Timecode Calculations** - Customizable FPS and handles
@@ -24,7 +24,7 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 
 Create an EDL (File_129 or CMX3600) from the Avid video track containing only shots planned for VFX. In List Options in Avid, check: **Clip Names**, **Source File Name**, and **Markers**.
 
-VFX IDs are created automatically based on the following rule: `FILM_ID_Scene_num`, where num is a progressive number like 010, 020, 030, etc.
+VFX IDs are created automatically based on the following rule: `Project_ID_Scene_num`, where num is a progressive number like 010, 020, 030, etc.
 
 #### How scene numbers are extracted
 
@@ -34,7 +34,7 @@ The EDL contains a comment line for each event with the subclip name, for exampl
 *FROM CLIP NAME:  33-4-/01
 ```
 
-The tool reads the **first sequence of digits** in the clip name as the scene number — in this example `33`, padded to three digits: `033`. The shot counter within that scene starts at `010` and increments by 10 for each additional clip in the same scene, giving IDs such as `FILM_ID_033_010`, `FILM_ID_033_020`, etc.
+The tool reads the **first sequence of digits** in the clip name as the scene number — in this example `33`, padded to three digits: `033`. The shot counter within that scene starts at `010` and increments by 10 for each additional clip in the same scene, giving IDs such as `Project_ID_033_010`, `Project_ID_033_020`, etc.
 
 > This convention assumes a standard feature-film workflow where subclips are named with scene number followed by take information (e.g. `33-4-/01` = scene 33, shot 4, take 1). If your project uses a different naming convention, assign VFX IDs manually in Avid Media Composer via markers before exporting the EDL.
 
@@ -103,7 +103,7 @@ Relink imported EDL to mov files like in Pulls EDL.
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| Project ID | Project identifier used in VFX IDs | FILM_ID |
+| Project ID | Project identifier used in VFX IDs | Project_ID |
 | FPS | Frame rate for timecode calculations — dropdown: 23.976, 24, 25, 29.97, 30, 50, 59.94 | 24 |
 | Resolution | Video format written to ALE `VIDEO_FORMAT` header | 1080 |
 | Pull Handles | Extra frames added to pulls | 10 |
