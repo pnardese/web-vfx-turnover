@@ -7,7 +7,7 @@ A web-based tool that streamlines VFX sequence preparation for post-production w
 ## Features
 
 - **Automatic VFX ID Generation** - Creates VFX IDs based on scene numbers (format: `FILM_ID_SCENE_SHOT`) only when the EDL has no existing markers; if any markers are present, IDs are read directly from the markers and missing ones are flagged as warnings
-- **Support for Existing Markers** - Recognizes LOC lines in EDL files; marker IDs are never overwritten
+- **Support for Existing Markers** - Recognizes LOC lines in EDL files; marker IDs are never overwritten. Marker comments may include a job description after the VFX ID (e.g. `GDN_033_0010 - REMOVE BACKGROUND`) — the VFX ID is read from the first word and the job description is stored separately, included in exported markers and in the TAB `Comments` column
 - **Multiple Export Formats** - Markers, Subcaps, ALE, EDL, and spreadsheet formats
 - **Timecode Calculations** - Customizable FPS and handles
 - **Drag-and-Drop Interface** - Easy file upload
@@ -69,7 +69,7 @@ The exported file contains one row per shot with the following columns:
 | `#` | Shot counter |
 | `Name` | VFX ID |
 | `Thumbnail` | *(empty — for thumbnail reference)* |
-| `Comments` | *(empty)* |
+| `Comments` | Job description if present (e.g. `- REMOVE BACKGROUND`), otherwise empty |
 | `Status` | *(empty)* |
 | `Date` | *(empty)* |
 | `Duration` | Source clip duration as timecode |

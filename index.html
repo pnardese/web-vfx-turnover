@@ -491,6 +491,7 @@
                     </div>
 
                     <p className="mb-3">When the EDL has <strong className="text-white">no LOC markers at all</strong>, VFX IDs are auto-generated for every clip. When the EDL contains <strong className="text-white">any LOC markers</strong> (a marked EDL), the tool reads VFX IDs directly from those markers and never overwrites them. Clips without a marker in a marked EDL are flagged with a <strong className="text-purple-400">MISSING VFX ID</strong> warning — assign the marker in Avid and re-export the EDL. Therefore, if you add VFX shots in Avid, you need to add markers with their new corresponding VFX IDs before exporting the EDL.</p>
+                    <p className="mb-3">Marker comments may include a <strong className="text-white">job description</strong> after the VFX ID — for example <code className="bg-[#1a2530] t-raised px-1 rounded">GDN_033_0010 - REMOVE BACKGROUND</code>. The tool reads only the VFX ID (first word) and stores the job description separately. It is included in the exported markers file comment and in the TAB <code className="bg-[#1a2530] t-raised px-1 rounded">Comments</code> column.</p>
                     <img src="imgs/01_create_edl.png" alt="Configuration of the list tool in Avid Media Composer for EDL exporting" className="rounded-lg border border-gray-700 mt-2 max-w-[700px]" />
                     <p className="text-xs text-gray-500 mt-1">Configuration of the list tool in Avid Media Composer for EDL exporting.</p>
                     <p className="mt-3">Once exported, load the <code className="bg-[#1a2530] t-raised px-1 rounded">.edl</code> file into the tool by <strong className="text-white">dragging and dropping it</strong> onto the drop zone in the main window, or clicking the drop zone to <strong className="text-white">browse your local disk</strong>.</p>
@@ -524,7 +525,7 @@
                                 ['#', 'Shot counter'],
                                 ['Name', 'VFX ID'],
                                 ['Thumbnail', 'Empty — for thumbnail reference'],
-                                ['Comments', 'Empty'],
+                                ['Comments', 'Job description if present (e.g. — REMOVE BACKGROUND), otherwise empty'],
                                 ['Status', 'Empty in DB Export; NEW / REMOVED / CHANGED - NO PULL NEEDED / NEED PULL / MISSING VFX ID in Changelist TXT'],
                                 ['Date', 'Empty'],
                                 ['Duration', 'Source clip duration as timecode'],
@@ -768,7 +769,7 @@
                     else if (line.startsWith('FCM:')) edlData.edl_metadata.edl_fcm = line.substring(4).trim();
                     else if (edlLineRegex.test(line)) {
                         const m = line.match(edlLineRegex);
-                        lastEvent = { type: 'event', event_number: m[1], reel: m[2], track: m[3], transition: m[4], source_start_TC: m[5], source_end_TC: m[6], record_start_TC: m[7], record_end_TC: m[8], FROM: '', LOC: '', SOURCE: '', 'VFX ID': '' };
+                        lastEvent = { type: 'event', event_number: m[1], reel: m[2], track: m[3], transition: m[4], source_start_TC: m[5], source_end_TC: m[6], record_start_TC: m[7], record_end_TC: m[8], FROM: '', LOC: '', SOURCE: '', 'VFX ID': '', job_description: '' };
                         edlData.events.push(lastEvent);
                     } else if ((line.startsWith('*FROM') || line.startsWith('* FROM')) && lastEvent) {
                         const fromIndex = line.indexOf('FROM');
@@ -778,7 +779,10 @@
                         const locIndex = line.indexOf('LOC:');
                         const loc = line.substring(locIndex + 4).trim();
                         lastEvent.LOC = loc;
-                        lastEvent['VFX ID'] = loc.split(/\s+/).pop();
+                        // LOC format: <timecode> <color> <VFX_ID> [job description...]
+                        const locParts = loc.split(/\s+/);
+                        lastEvent['VFX ID'] = locParts[2] || '';
+                        lastEvent.job_description = locParts.slice(3).join(' ');
                     } else if ((line.startsWith('*SOURCE') || line.startsWith('* SOURCE')) && lastEvent) {
                         const sourceIndex = line.indexOf('SOURCE');
                         let sourceValue = line.substring(sourceIndex + 6).trim();
@@ -1068,7 +1072,8 @@
                         const endFrames = parseTimecode(e.record_end_TC, fr);
                         tc = framesToTimecode(Math.floor((startFrames + endFrames) / 2), fr);
                     }
-                    return `${markerUser}\t${tc}\t${markerTrack}\t${markerColor}\t${e['VFX ID']}\t1`;
+                    const comment = e.job_description ? `${e['VFX ID']} ${e.job_description}` : e['VFX ID'];
+                    return `${markerUser}\t${tc}\t${markerTrack}\t${markerColor}\t${comment}\t1`;
                 }).join('\n'), mkFile(bn, '_markers', '.txt'));
             };
 
@@ -1119,7 +1124,7 @@
                 let content = '#\tName\tThumbnail\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
                 getActiveEvents().forEach((e, i) => {
                     const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
-                    content += `${i+1}\t${e['VFX ID']}\t\t\t\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
+                    content += `${i+1}\t${e['VFX ID']}\t\t${e.job_description || ''}\t\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
                 });
                 downloadFile(content, mkFile(bn, '_TAB', '.txt'));
             };
