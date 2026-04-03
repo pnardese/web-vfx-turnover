@@ -77,7 +77,9 @@ The exported file contains one row per shot with the following columns:
 | `Duration` | Source clip duration as timecode |
 | `Start` | Source start timecode |
 | `End` | Source end timecode |
-| `Frame Count Duration` | Duration in frames |
+| `Start Frame` | First frame number of the clip (always 1001) |
+| `End Frame` | Last frame number — Start Frame + Frame Count Duration (handles included) |
+| `Frame Count Duration` | Full clip duration in frames including head and tail handles |
 | `Pull Handles` | Handle frames configured for the project |
 | `Tape` | Source reel / tape name |
 

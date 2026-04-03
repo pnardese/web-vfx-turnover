@@ -334,7 +334,8 @@
         );
 
         // ─── EDLPreview ───────────────────────────────────────────────────────────
-        const EDLPreview = ({ edlData, edlFilePath, onExportChangelist, onExportChangelistMarkers, onClearChangelist, markerUser, setMarkerUser, markerTrack, setMarkerTrack, markerColor, setMarkerColor }) => {
+        const EDLPreview = ({ edlData, edlFilePath, onExportChangelist, onExportChangelistMarkers, onClearChangelist, markerUser, setMarkerUser, markerTrack, setMarkerTrack, markerColor, setMarkerColor, handles, fps }) => {
+            const fr = Math.round(parseFloat(fps));
             const hasChangelist = edlData.events.some(e => ['new','removed','trimmed_ok','trimmed_pull','missing_id','marker_changed'].includes(e.changeStatus));
             const [clMarkersDropOpen, setClMarkersDropOpen] = React.useState(false);
             const clMarkersDropRef = React.useRef(null);
@@ -434,8 +435,8 @@
                                         {e.changeStatus === 'marker_changed' && <span className="text-amber-400 font-medium">MARKER ID CHANGED — CHECK IN AVID</span>}
                                     </td>
                                     <td className={`px-3 py-2 ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.reelMismatch ? 'text-red-400 font-semibold' : ''}`}>{e.reel}{e.reelMismatch && <span className="ml-1 text-red-500 font-normal">(was: {e.prevReel})</span>}</td>
-                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_start_TC !== e.prevSourceIn ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_start_TC !== e.prevSourceIn ? 'text-yellow-400' : e.changeStatus === 'marker_changed' && e.prevSourceIn && e.source_start_TC !== e.prevSourceIn ? 'text-amber-400' : ''}`}>{e.source_start_TC}{e.changeStatus === 'marker_changed' && e.prevSourceIn && e.source_start_TC !== e.prevSourceIn && <span className="ml-1 text-amber-600 font-normal text-xs">(was: {e.prevSourceIn})</span>}</td>
-                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_end_TC !== e.prevSourceOut ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_end_TC !== e.prevSourceOut ? 'text-yellow-400' : e.changeStatus === 'marker_changed' && e.prevSourceOut && e.source_end_TC !== e.prevSourceOut ? 'text-amber-400' : ''}`}>{e.source_end_TC}{e.changeStatus === 'marker_changed' && e.prevSourceOut && e.source_end_TC !== e.prevSourceOut && <span className="ml-1 text-amber-600 font-normal text-xs">(was: {e.prevSourceOut})</span>}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_start_TC !== e.prevSourceIn ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_start_TC !== e.prevSourceIn ? 'text-yellow-400' : e.changeStatus === 'marker_changed' && e.prevSourceIn && e.source_start_TC !== e.prevSourceIn ? 'text-amber-400' : ''}`}>{subtractTimecode(e.source_start_TC, handles, fr)}{e.changeStatus === 'marker_changed' && e.prevSourceIn && e.source_start_TC !== e.prevSourceIn && <span className="ml-1 text-amber-600 font-normal text-xs">(was: {subtractTimecode(e.prevSourceIn, handles, fr)})</span>}</td>
+                                    <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : e.changeStatus === 'trimmed_pull' && e.source_end_TC !== e.prevSourceOut ? 'text-orange-400' : e.changeStatus === 'trimmed_ok' && e.source_end_TC !== e.prevSourceOut ? 'text-yellow-400' : e.changeStatus === 'marker_changed' && e.prevSourceOut && e.source_end_TC !== e.prevSourceOut ? 'text-amber-400' : ''}`}>{addTimecode(e.source_end_TC, handles, fr)}{e.changeStatus === 'marker_changed' && e.prevSourceOut && e.source_end_TC !== e.prevSourceOut && <span className="ml-1 text-amber-600 font-normal text-xs">(was: {addTimecode(e.prevSourceOut, handles, fr)})</span>}</td>
                                     <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_start_TC}</td>
                                     <td className={`px-3 py-2 font-mono ${e.changeStatus === 'removed' ? 'text-red-400 line-through' : ''}`}>{e.record_end_TC}</td>
                                 </tr>
@@ -534,7 +535,9 @@
                                 ['Duration', 'Source clip duration as timecode'],
                                 ['Start', 'Source start timecode'],
                                 ['End', 'Source end timecode'],
-                                ['Frame Count Duration', 'Duration in frames'],
+                                ['Start Frame', 'First frame number of the clip (always 1001)'],
+                                ['End Frame', '1000 + Frame Count Duration (inclusive last frame, handles included)'],
+                                ['Frame Count Duration', 'Full clip duration in frames including head and tail handles'],
                                 ['Handles', 'Handle frames configured for the project'],
                                 ['Tape', 'Source reel / tape name'],
                             ].map(([col, desc]) => (
@@ -1124,10 +1127,10 @@
                 if (!edlData) return;
                 window.VFXLog.log('EXPORT', 'exportGoogleTab', { count: getActiveEvents().length });
                 const fr = Math.round(parseFloat(fps)), bn = getExportBn();
-                let content = '#\tName\tThumbnail\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
+                let content = '#\tName\tThumbnail\tComments\tStatus\tDate\tDuration\tStart\tEnd\tStart Frame\tEnd Frame\tFrame Count Duration\tHandles\tTape\n';
                 getActiveEvents().forEach((e, i) => {
-                    const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
-                    content += `${i+1}\t${e['VFX ID']}\t\t${e.job_description || ''}\t\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
+                    const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf, dh = df + 2 * handles;
+                    content += `${i+1}\t${e['VFX ID']}\t\t${e.job_description || ''}\t\t\t${framesToTimecode(df, fr)}\t${subtractTimecode(e.source_start_TC, handles, fr)}\t${addTimecode(e.source_end_TC, handles, fr)}\t${1001}\t${1000 + dh}\t${dh}\t${handles}\t${e.reel}\n`;
                 });
                 downloadFile(content, mkFile(bn, '_TAB', '.txt'));
             };
@@ -1154,11 +1157,11 @@
                 window.VFXLog.log('EXPORT', 'exportChangelist', { count: changeEvents.length });
                 const fr = Math.round(parseFloat(fps)), bn = getExportBn();
                 const statusLabel = { new: 'NEW', removed: 'REMOVED', trimmed_ok: 'CHANGED - NO PULL NEEDED', trimmed_pull: 'NEED PULL', unchanged: '', missing_id: 'MISSING VFX ID' };
-                let content = '#\tName\tThumbnail\tComments\tStatus\tDate\tDuration\tStart\tEnd\tFrame Count Duration\tHandles\tTape\n';
+                let content = '#\tName\tThumbnail\tComments\tStatus\tDate\tDuration\tStart\tEnd\tStart Frame\tEnd Frame\tFrame Count Duration\tHandles\tTape\n';
                 edlData.events.forEach((e, i) => {
-                    const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf;
+                    const sf = parseTimecode(e.source_start_TC, fr), ef = parseTimecode(e.source_end_TC, fr), df = ef - sf, dh = df + 2 * handles;
                     const name = e['VFX ID'] || '[NO ID]';
-                    content += `${i+1}\t${name}\t\t\t${statusLabel[e.changeStatus] || ''}\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t${df}\t${handles}\t${e.reel}\n`;
+                    content += `${i+1}\t${name}\t\t\t${statusLabel[e.changeStatus] || ''}\t\t${framesToTimecode(df, fr)}\t${e.source_start_TC}\t${e.source_end_TC}\t\t\t${dh}\t${handles}\t${e.reel}\n`;
                 });
                 downloadFile(content, mkFile(bn, '_changelist', '.txt'));
             };
@@ -1348,7 +1351,7 @@
                                         </div>
                                     </div>
 
-                                    <div id="tour-preview">{edlData && <EDLPreview edlData={edlData} edlFilePath={edlFilePath} onExportChangelist={exportChangelist} onExportChangelistMarkers={exportChangelistMarkers} onClearChangelist={clearChangelist} markerUser={markerUser} setMarkerUser={setMarkerUser} markerTrack={markerTrack} setMarkerTrack={setMarkerTrack} markerColor={markerColor} setMarkerColor={setMarkerColor} />}</div>
+                                    <div id="tour-preview">{edlData && <EDLPreview edlData={edlData} edlFilePath={edlFilePath} onExportChangelist={exportChangelist} onExportChangelistMarkers={exportChangelistMarkers} onClearChangelist={clearChangelist} markerUser={markerUser} setMarkerUser={setMarkerUser} markerTrack={markerTrack} setMarkerTrack={setMarkerTrack} markerColor={markerColor} setMarkerColor={setMarkerColor} handles={handles} fps={fps} />}</div>
 
                                     <div id="tour-incoming" className="pt-6 border-t border-[#1a2530] t-border">
                                         <h2 className="text-xs font-medium text-[#14b8a6] mb-3 uppercase">Incoming VFX EDL</h2>
